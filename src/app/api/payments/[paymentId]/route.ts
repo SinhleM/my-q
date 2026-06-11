@@ -2,23 +2,21 @@
  * FILE: src/app/api/payments/[paymentId]/route.ts
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// GET — public lookup for QR payment page
+// GET /api/payments/[paymentId]
 export async function GET(
-    _request: Request,
-    { params }: { params: { paymentId: string } }
+    _request: NextRequest,
+    context: { params: Promise<{ paymentId: string }> }
 ) {
-    const { paymentId } = params;
+    const { paymentId } = await context.params;
 
     const supabase = await createClient();
 
     const { data, error } = await supabase
         .from("payment_requests")
-        .select(
-            "id, amount, currency, description, status, expires_at, created_at"
-        )
+        .select("id, amount, currency, description, status, expires_at, created_at")
         .eq("id", paymentId)
         .single();
 
@@ -32,18 +30,16 @@ export async function GET(
     return NextResponse.json({ data, error: null });
 }
 
-// PATCH — owner cancels a pending request
+
+// PATCH /api/payments/[paymentId]
 export async function PATCH(
-    request: Request,
-    { params }: { params: { paymentId: string } }
+    request: NextRequest,
+    context: { params: Promise<{ paymentId: string }> }
 ) {
-    const { paymentId } = params;
+    const { paymentId } = await context.params;
 
     const supabase = await createClient();
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
         return NextResponse.json(
@@ -56,10 +52,7 @@ export async function PATCH(
 
     if (body.status !== "cancelled") {
         return NextResponse.json(
-            {
-                data: null,
-                error: "Only cancellation is allowed via this endpoint.",
-            },
+            { data: null, error: "Only cancellation allowed." },
             { status: 400 }
         );
     }
