@@ -1,19 +1,24 @@
-// src/components/landing/page.tsx
+"use client";
+
 import Link from "next/link";
+import { User, FileUp, CreditCard } from "lucide-react";
 
 export default function Landing() {
     const actions = [
         {
             title: "Share contacts",
             desc: "Phone, email, and social profiles — instantly added to any device's address book with a single tap.",
+            icon: User,
         },
         {
             title: "Transfer files",
             desc: "Anyone can drop files directly onto your profile or grab shared assets. Zero app sign-up required for them.",
+            icon: FileUp,
         },
         {
             title: "Receive payments",
             desc: "Generate secure billing requests instantly and collect funds cleanly through your PayFast gateway link.",
+            icon: CreditCard,
         },
     ];
 
@@ -25,12 +30,10 @@ export default function Landing() {
                     One QR code.<br /> Everything you need to share.
                 </h1>
 
-                {/* Hidden on mobile, displays on tablet/desktop */}
                 <p className="hidden sm:block mt-5 text-base text-neutral-500 max-w-sm leading-relaxed">
                     Share files, swap contact records, and accept payments natively from a single fluid scan link.
                 </p>
 
-                {/* Big, soft rounded bubble buttons optimized for mobile thumb interaction */}
                 <div className="mt-8 w-full flex flex-col sm:flex-row items-center gap-3 justify-center">
                     <Link
                         href="/register"
@@ -51,7 +54,6 @@ export default function Landing() {
             <section className="w-full bg-neutral-50/60 border-t border-neutral-100/80 px-6 py-16">
                 <div className="max-w-md mx-auto flex flex-col gap-5">
                     <div className="mb-2 text-center sm:text-left">
-                        {/* Hard-hitting pain point title */}
                         <h2 className="text-xl font-extrabold tracking-tight text-neutral-900">
                             No apps to install. No friction.
                         </h2>
@@ -62,10 +64,11 @@ export default function Landing() {
                             key={idx}
                             className="group bg-white border border-neutral-200/60 p-6 rounded-3xl transition-all duration-200 hover:border-emerald-950/20 active:scale-[0.99] shadow-sm flex gap-4 items-start"
                         >
-                            {/* Soft dark green circular icon indicator */}
-                            <div className="w-10 h-10 rounded-2xl bg-emerald-950/5 text-emerald-950 font-extrabold text-sm flex items-center justify-center shrink-0">
-                                0{idx + 1}
+                            {/* Updated Icon Container */}
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-950/5 text-emerald-950 flex items-center justify-center shrink-0">
+                                <item.icon size={20} strokeWidth={2.5} />
                             </div>
+
                             <div className="flex flex-col gap-1">
                                 <h3 className="font-bold text-neutral-900 tracking-tight group-hover:text-emerald-950 transition-colors">
                                     {item.title}

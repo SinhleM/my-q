@@ -1,110 +1,53 @@
-// components/files/FileUploadSection.tsx
-'use client'
+/**
+ * FILE: src/components/files/FileUploadSection.tsx
+ */
 
-import { useRef, useState } from 'react'
-import { formatFileSize } from '@/lib/files/storage'
+"use client";
 
-type SharedFile = {
-    id: string
-    file_name: string
-    file_size: number
-    mime_type: string | null
-}
+import { useState } from "react";
 
 export default function FileUploadSection({
-    ownerUsername,
-    sharedFiles,
+    ownerId,
 }: {
-    ownerUsername: string
-    sharedFiles: SharedFile[]
+    ownerId: string;
 }) {
-    const inputRef = useRef<HTMLInputElement>(null)
-    const [uploading, setUploading] = useState(false)
-    const [done, setDone] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [uploading, setUploading] = useState(false);
 
     async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]
-        if (!file) return
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-        setUploading(true)
-        setError(null)
-        setDone(false)
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("ownerId", ownerId);
 
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('owner_username', ownerUsername)
+        setUploading(true);
 
-        const res = await fetch('/api/files/upload', { method: 'POST', body: formData })
-        const data = await res.json()
+        const res = await fetch("/api/files/upload", {
+            method: "POST",
+            body: formData,
+        });
 
-        setUploading(false)
+        setUploading(false);
 
-        if (data.error) {
-            setError(data.error)
-        } else {
-            setDone(true)
+        if (!res.ok) {
+            alert("Upload failed");
+            return;
         }
-    }
 
-    async function handleDownload(fileId: string) {
-        const res = await fetch(`/api/files/${fileId}`)
-        const data = await res.json()
-        if (data.data?.url) window.open(data.data.url, '_blank')
+        alert("File uploaded successfully");
+        window.location.reload();
     }
 
     return (
-        <section className="flex flex-col gap-4">
-            <h2 className="text-xs text-gray-400 uppercase tracking-wide">Files</h2>
+        <div className="p-4 border rounded-2xl">
+            <input type="file" onChange={handleUpload} />
 
-            {/* Upload */}
-            <div
-                onClick={() => inputRef.current?.click()}
-                className="border border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-brand transition-colors"
-            >
-                <input
-                    ref={inputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={handleUpload}
-                />
-                {uploading ? (
-                    <p className="text-sm text-gray-400">Uploading…</p>
-                ) : done ? (
-                    <p className="text-sm text-brand">File sent ✓</p>
-                ) : (
-                    <>
-                        <p className="text-sm text-gray-500">Tap to send a file</p>
-                        <p className="text-xs text-gray-300 mt-1">Any format accepted</p>
-                    </>
-                )}
-            </div>
-
-            {error && <p className="text-sm text-red-500">{error}</p>}
-
-            {/* Shared files available for download */}
-            {sharedFiles.length > 0 && (
-                <div className="flex flex-col gap-2">
-                    <p className="text-xs text-gray-400">Available to download</p>
-                    {sharedFiles.map(f => (
-                        <div
-                            key={f.id}
-                            className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3"
-                        >
-                            <div className="min-w-0">
-                                <p className="text-sm truncate">{f.file_name}</p>
-                                <p className="text-xs text-gray-400">{formatFileSize(f.file_size)}</p>
-                            </div>
-                            <button
-                                onClick={() => handleDownload(f.id)}
-                                className="text-xs text-brand hover:underline shrink-0 ml-4"
-                            >
-                                Download
-                            </button>
-                        </div>
-                    ))}
-                </div>
+            {uploading && (
+                <p className="text-sm text-neutral-500 mt-2">
+                    Uploading...
+                </p>
             )}
-        </section>
-    )
+        </div>
+    );
 }

@@ -1,86 +1,135 @@
-// app/api/profile/route.ts
-import { NextResponse } from 'next/server'
+/**
+ * FILE: src/app/api/profile/route.ts
+ */
 
-// GET /api/profile — returns the authenticated user's profile
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Username validation helper
+ */
+function isValidUsername(username: string) {
+    return /^[a-z0-9_]{3,30}$/.test(username);
+}
+
+// GET — fetch authenticated user's profile
 export async function GET() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-        return NextResponse.json({ data: null, error: 'Unauthorised' }, { status: 401 })
+        return NextResponse.json(
+            { data: null, error: "Unauthorised" },
+            { status: 401 }
+        );
     }
 
     const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
     if (error) {
-        return NextResponse.json({ data: null, error: error.message }, { status: 500 })
+        return NextResponse.json(
+            { data: null, error: error.message },
+            { status: 500 }
+        );
     }
 
-    return NextResponse.json({ data, error: null })
+    return NextResponse.json({ data, error: null });
 }
 
-// PATCH /api/profile — update mutable profile fields
+// PATCH — update profile
 export async function PATCH(request: Request) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-        return NextResponse.json({ data: null, error: 'Unauthorised' }, { status: 401 })
+        return NextResponse.json(
+            { data: null, error: "Unauthorised" },
+            { status: 401 }
+        );
     }
 
-    const body = await request.json()
+    const body = await request.json();
 
     const allowed = [
-        'username', 'display_name', 'bio', 'phone', 'website',
-        'twitter', 'linkedin', 'instagram',
-        'accept_files', 'accept_payments', 'max_file_size_mb',
-    ]
+        "username",
+        "display_name",
+        "bio",
+        "phone",
+        "website",
+        "twitter",
+        "linkedin",
+        "instagram",
+        "accept_files",
+        "accept_payments",
+        "max_file_size_mb",
+    ];
 
-    const updates: Record<string, unknown> = {}
+    const updates: Record<string, unknown> = {};
+
     for (const key of allowed) {
-        if (key in body) updates[key] = body[key]
+        if (key in body) updates[key] = body[key];
     }
 
-    // Validate username if being changed
+    // Username validation
     if (updates.username) {
-        if (!isValidUsername(updates.username as string)) {
+        const username = updates.username as string;
+
+        if (!isValidUsername(username)) {
             return NextResponse.json(
-                { data: null, error: 'Username must be 3–30 characters: lowercase letters, numbers, underscores only.' },
+                {
+                    data: null,
+                    error:
+                        "Username must be 3–30 chars: lowercase letters, numbers, underscores only.",
+                },
                 { status: 400 }
-            )
+            );
         }
 
-        // Check uniqueness
         const { data: existing } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('username', updates.username)
-            .neq('id', user.id)
-            .maybeSingle()
+            .from("profiles")
+            .select("id")
+            .eq("username", username)
+            .neq("id", user.id)
+            .maybeSingle();
 
         if (existing) {
-            return NextResponse.json({ data: null, error: 'Username already taken.' }, { status: 409 })
+            return NextResponse.json(
+                { data: null, error: "Username already taken." },
+                { status: 409 }
+            );
         }
     }
 
     if (Object.keys(updates).length === 0) {
-        return NextResponse.json({ data: null, error: 'No valid fields to update.' }, { status: 400 })
+        return NextResponse.json(
+            { data: null, error: "No valid fields to update." },
+            { status: 400 }
+        );
     }
 
     const { data, error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update(updates)
-        .eq('id', user.id)
+        .eq("id", user.id)
         .select()
-        .single()
+        .single();
 
     if (error) {
-        return NextResponse.json({ data: null, error: error.message }, { status: 500 })
+        return NextResponse.json(
+            { data: null, error: error.message },
+            { status: 500 }
+        );
     }
 
-    return NextResponse.json({ data, error: null })
+    return NextResponse.json({ data, error: null });
 }

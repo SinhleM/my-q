@@ -1,9 +1,15 @@
-// lib/supabase/server.ts
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+/**
+ * FILE: src/lib/supabase/server.ts
+ */
 
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+
+/**
+ * USER CLIENT (SSR - safe, uses auth cookies)
+ */
 export async function createClient() {
-    const cookieStore = await cookies()
+    const cookieStore = cookies();
 
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,28 +17,30 @@ export async function createClient() {
         {
             cookies: {
                 getAll() {
-                    return cookieStore.getAll()
+                    return cookieStore.getAll();
                 },
                 setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // Called from a Server Component — cookies can't be set.
-                        // Middleware handles session refresh so this is safe to ignore.
-                    }
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        try {
+                            cookieStore.set(name, value, options);
+                        } catch {
+                            // ignore server component restriction
+                        }
+                    });
                 },
             },
         }
-    )
+    );
 }
 
-// Service-role client — bypasses RLS. Only use in trusted server contexts.
+/**
+ * ADMIN CLIENT (SERVICE ROLE - bypasses RLS)
+ */
 export function createServiceClient() {
-    const { createClient } = require('@supabase/supabase-js')
+    const { createClient } = require("@supabase/supabase-js");
+
     return createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    );
 }

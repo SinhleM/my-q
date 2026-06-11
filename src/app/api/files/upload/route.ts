@@ -1,69 +1,73 @@
-// app/api/files/upload/route.ts
-import { NextResponse } from 'next/server'
+/**
+ * FILE: src/app/api/files/upload/route.ts
+ */
 
-const ABSOLUTE_MAX_MB = 100
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
-// POST /api/files/upload
-// Body: multipart/form-data with fields: file, owner_username
-// The uploader may or may not be authenticated.
-export async function POST(request: Request) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+export async function POST(req: NextRequest) {
+    const supabase = await createClient();
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    const ownerUsername = formData.get('owner_username') as string | null
+    // Get authenticated user (optional for QR uploads)
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!file || !ownerUsername) {
-        return NextResponse.json({ data: null, error: 'Missing file or owner_username.' }, { status: 400 })
-    }
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const ownerId = formData.get("ownerId") as string | null;
 
-    // Resolve the owner profile
-    const { data: owner } = await supabase
-        .from('profiles')
-        .select('id, accept_files, max_file_size_mb')
-        .eq('username', ownerUsername)
-        .single()
-
-    if (!owner) {
-        return NextResponse.json({ data: null, error: 'Profile not found.' }, { status: 404 })
-    }
-
-    if (!owner.accept_files) {
-        return NextResponse.json({ data: null, error: 'This user is not accepting files.' }, { status: 403 })
-    }
-
-    const maxBytes = Math.min(owner.max_file_size_mb, ABSOLUTE_MAX_MB) * 1024 * 1024
-    if (file.size > maxBytes) {
+    if (!file || !ownerId) {
         return NextResponse.json(
-            { data: null, error: `File exceeds the ${owner.max_file_size_mb} MB limit.` },
-            { status: 413 }
-        )
+            { error: "Missing file or ownerId" },
+            { status: 400 }
+        );
     }
 
-    const { path, error: uploadError } = await uploadFile(owner.id, file)
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${randomUUID()}.${fileExt}`;
+    const storagePath = `${ownerId}/${fileName}`;
+
+    // 1. Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+        .from("qr-files")
+        .upload(storagePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+        });
+
     if (uploadError) {
-        return NextResponse.json({ data: null, error: uploadError }, { status: 500 })
+        return NextResponse.json(
+            { error: uploadError.message },
+            { status: 500 }
+        );
     }
 
-    // Insert the file record
-    const { data: fileRecord, error: dbError } = await supabase
-        .from('files')
+    // 2. Insert DB record
+    const { data, error: dbError } = await supabase
+        .from("files")
         .insert({
-            owner_id: owner.id,
+            owner_id: ownerId,
             sender_id: user?.id ?? null,
-            storage_path: path,
+            storage_path: storagePath,
             file_name: file.name,
             file_size: file.size,
-            mime_type: file.type || null,
+            mime_type: file.type,
             is_shared: false,
         })
         .select()
-        .single()
+        .single();
 
     if (dbError) {
-        return NextResponse.json({ data: null, error: dbError.message }, { status: 500 })
+        return NextResponse.json(
+            { error: dbError.message },
+            { status: 500 }
+        );
     }
 
-    return NextResponse.json({ data: fileRecord, error: null }, { status: 201 })
+    return NextResponse.json({
+        success: true,
+        file: data,
+    });
 }
