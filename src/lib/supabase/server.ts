@@ -9,7 +9,7 @@ import { cookies } from "next/headers";
  * USER CLIENT (SSR - safe, uses auth cookies)
  */
 export async function createClient() {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,12 +19,23 @@ export async function createClient() {
                 getAll() {
                     return cookieStore.getAll();
                 },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
+
+                setAll(
+                    cookiesToSet: {
+                        name: string;
+                        value: string;
+                        options?: Record<string, unknown>;
+                    }[]
+                ) {
+                    cookiesToSet.forEach((cookie) => {
                         try {
-                            cookieStore.set(name, value, options);
+                            cookieStore.set(
+                                cookie.name,
+                                cookie.value,
+                                cookie.options as any
+                            );
                         } catch {
-                            // ignore server component restriction
+                            // Server Component restriction (safe ignore)
                         }
                     });
                 },
