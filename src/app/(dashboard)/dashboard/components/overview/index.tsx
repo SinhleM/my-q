@@ -8,63 +8,89 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
-export default function Overview() {
-    const [data, setData] = useState<{
-        username: string;
-        qrUrl: string;
-    } | null>(null);
+type OverviewData = {
+    username: string;
+    qrUrl: string;
+};
 
+export default function Overview() {
+    const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadIdentity() {
-            const supabase = createClient();
+            try {
+                const supabase = createClient();
 
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
+                const {
+                    data: { user },
+                    error: userError,
+                } = await supabase.auth.getUser();
 
-            if (!user) return;
+                if (userError || !user) {
+                    setError("User not authenticated");
+                    setLoading(false);
+                    return;
+                }
 
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("username")
-                .eq("id", user.id)
-                .single();
+                const { data: profile, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("username")
+                    .eq("id", user.id)
+                    .single();
 
-            if (!profile?.username) {
-                setLoading(false);
-                return;
-            }
+                if (profileError || !profile?.username) {
+                    setError("Profile not found");
+                    setLoading(false);
+                    return;
+                }
 
-            // CALL QR API (clean separation)
-            const res = await fetch("/api/qr/generate", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
+                // Call QR API (only when needed)
+                const res = await fetch("/api/qr/generate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        username: profile.username,
+                    }),
+                });
+
+                if (!res.ok) {
+                    throw new Error("Failed to generate QR code");
+                }
+
+                const qr = await res.json();
+
+                setData({
                     username: profile.username,
-                }),
-            });
+                    qrUrl: qr.qrDataURL,
+                });
 
-            const qr = await res.json();
-
-            setData({
-                username: profile.username,
-                qrUrl: qr.qrDataURL,
-            });
-
-            setLoading(false);
+            } catch (err: any) {
+                setError(err.message || "Something went wrong");
+            } finally {
+                setLoading(false);
+            }
         }
 
         loadIdentity();
     }, []);
 
-    if (loading)
+    if (loading) {
         return (
             <div className="animate-pulse h-64 bg-neutral-100 rounded-3xl" />
         );
+    }
+
+    if (error) {
+        return (
+            <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-red-600 font-medium">
+                {error}
+            </div>
+        );
+    }
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -91,18 +117,37 @@ export default function Overview() {
                     <p className="font-bold text-lg">
                         @{data?.username}
                     </p>
+
                     <p className="text-xs text-neutral-400">
-                        myq.co.za/q/{data?.username}
+                        {process.env.NEXT_PUBLIC_APP_URL}/q/{data?.username}
                     </p>
                 </div>
             </div>
 
             <div className="mt-8 flex gap-4">
-                <button className="bg-emerald-950 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-900 transition-colors">
+                <button
+                    onClick={() => {
+                        if (!data?.qrUrl) return;
+
+                        const link = document.createElement("a");
+                        link.href = data.qrUrl;
+                        link.download = "myq-qr.png";
+                        link.click();
+                    }}
+                    className="bg-emerald-950 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-900 transition-colors"
+                >
                     Download QR
                 </button>
 
-                <button className="bg-neutral-100 text-neutral-900 px-6 py-3 rounded-xl font-bold hover:bg-neutral-200 transition-colors">
+                <button
+                    onClick={() => {
+                        if (!data?.username) return;
+
+                        const url = `${process.env.NEXT_PUBLIC_APP_URL}/q/${data.username}`;
+                        navigator.clipboard.writeText(url);
+                    }}
+                    className="bg-neutral-100 text-neutral-900 px-6 py-3 rounded-xl font-bold hover:bg-neutral-200 transition-colors"
+                >
                     Copy Link
                 </button>
             </div>

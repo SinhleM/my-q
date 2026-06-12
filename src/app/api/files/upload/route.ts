@@ -9,7 +9,6 @@ import { randomUUID } from "crypto";
 export async function POST(req: NextRequest) {
     const supabase = await createClient();
 
-    // Get authenticated user (optional for QR uploads)
     const {
         data: { user },
     } = await supabase.auth.getUser();
@@ -29,9 +28,8 @@ export async function POST(req: NextRequest) {
     const fileName = `${randomUUID()}.${fileExt}`;
     const storagePath = `${ownerId}/${fileName}`;
 
-    // 1. Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
-        .from("qr-files")
+        .from("user-files")
         .upload(storagePath, file, {
             cacheControl: "3600",
             upsert: false,
@@ -44,7 +42,6 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    // 2. Insert DB record
     const { data, error: dbError } = await supabase
         .from("files")
         .insert({
@@ -52,7 +49,7 @@ export async function POST(req: NextRequest) {
             sender_id: user?.id ?? null,
             storage_path: storagePath,
             file_name: file.name,
-            file_size: file.size,
+            file_size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
             mime_type: file.type,
             is_shared: false,
         })

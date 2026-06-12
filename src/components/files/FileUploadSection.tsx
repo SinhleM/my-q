@@ -5,42 +5,56 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
 
 export default function FileUploadSection({
     ownerId,
+    onUploadComplete,
 }: {
     ownerId: string;
+    onUploadComplete?: () => void;
 }) {
     const [uploading, setUploading] = useState(false);
+    const { showToast } = useToast();
 
     async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        setUploading(true);
+        showToast("Uploading file...", "info");
+
         const formData = new FormData();
         formData.append("file", file);
         formData.append("ownerId", ownerId);
 
-        setUploading(true);
+        try {
+            const res = await fetch("/api/files/upload", {
+                method: "POST",
+                body: formData,
+            });
 
-        const res = await fetch("/api/files/upload", {
-            method: "POST",
-            body: formData,
-        });
+            const data = await res.json();
 
-        setUploading(false);
+            if (!res.ok) {
+                showToast(data?.error || "Upload failed", "error");
+                return;
+            }
 
-        if (!res.ok) {
-            alert("Upload failed");
-            return;
+            showToast("File uploaded successfully 🎉", "success");
+
+            // refresh file list WITHOUT reload
+            onUploadComplete?.();
+
+        } catch (err) {
+            showToast("Network error during upload", "error");
+        } finally {
+            setUploading(false);
         }
-
-        alert("File uploaded successfully");
-        window.location.reload();
     }
 
     return (
-        <div className="p-4 border rounded-2xl">
+        <div className="p-4 border rounded-2xl bg-white">
             <input type="file" onChange={handleUpload} />
 
             {uploading && (

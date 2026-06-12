@@ -12,18 +12,18 @@ export default async function QRProfilePage({
 }) {
     const supabase = await createClient();
 
-    // 1. Fetch profile by username
-    const { data: profile, error } = await supabase
+    // 1. Fetch profile
+    const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("username", params.username)
         .single();
 
-    if (error || !profile) {
+    if (profileError || !profile) {
         return notFound();
     }
 
-    // 2. Fetch shared files for this profile
+    // 2. Fetch ONLY shared files (public access layer)
     const { data: files } = await supabase
         .from("files")
         .select("*")
@@ -32,17 +32,19 @@ export default async function QRProfilePage({
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-    // 3. Fetch pending payment requests
+    // 3. Fetch ONLY active payment requests (public view)
     const { data: payments } = await supabase
         .from("payment_requests")
         .select("*")
         .eq("owner_id", profile.id)
         .eq("status", "pending")
+        .or(`expires_at.is.null,expires_at.gt.now()`)
         .order("created_at", { ascending: false });
 
     return (
         <div className="min-h-screen w-full bg-white flex flex-col items-center px-6 py-12">
-            {/* PROFILE CARD */}
+
+            {/* ================= PROFILE CARD ================= */}
             <div className="w-full max-w-xl bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm">
                 <h1 className="text-2xl font-extrabold text-neutral-900">
                     {profile.display_name || profile.username}
@@ -73,25 +75,27 @@ export default async function QRProfilePage({
                 </div>
             </div>
 
-            {/* FILES SECTION */}
+            {/* ================= FILES ================= */}
             <div className="w-full max-w-xl mt-10">
                 <h2 className="text-lg font-bold text-neutral-900 mb-4">
                     Shared Files
                 </h2>
 
-                {files?.length ? (
+                {files && files.length > 0 ? (
                     <div className="space-y-3">
                         {files.map((file) => (
                             <a
                                 key={file.id}
-                                href={`/api/files/${file.id}`}
+                                href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/qr-files/${file.storage_path}`}
+                                target="_blank"
                                 className="block p-4 border rounded-2xl hover:bg-neutral-50 transition"
                             >
                                 <p className="font-medium text-neutral-900">
                                     {file.file_name}
                                 </p>
+
                                 <p className="text-xs text-neutral-500">
-                                    {(file.file_size / 1024).toFixed(1)} KB
+                                    {(Number(file.file_size) / 1024 / 1024).toFixed(2)} MB
                                 </p>
                             </a>
                         ))}
@@ -103,13 +107,13 @@ export default async function QRProfilePage({
                 )}
             </div>
 
-            {/* PAYMENTS SECTION */}
+            {/* ================= PAYMENTS ================= */}
             <div className="w-full max-w-xl mt-10">
                 <h2 className="text-lg font-bold text-neutral-900 mb-4">
                     Payment Requests
                 </h2>
 
-                {payments?.length ? (
+                {payments && payments.length > 0 ? (
                     <div className="space-y-3">
                         {payments.map((payment) => (
                             <div
@@ -120,6 +124,7 @@ export default async function QRProfilePage({
                                     <p className="font-medium">
                                         {payment.description || "Payment request"}
                                     </p>
+
                                     <p className="text-xs text-neutral-500">
                                         R {payment.amount}
                                     </p>
@@ -140,6 +145,7 @@ export default async function QRProfilePage({
                     </p>
                 )}
             </div>
+
         </div>
     );
 }

@@ -1,3 +1,4 @@
+// src\app\(dashboard)\dashboard\page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,7 @@ import Payments from "./components/payments";
 import Files from "./components/files";
 import Analytics from "./components/analytics";
 import Settings from "./components/settings";
+import Profile from "./components/profile";
 
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState("overview");
@@ -31,6 +33,7 @@ export default function DashboardPage() {
                 {activeTab === "files" && <Files />}
                 {activeTab === "analytics" && <Analytics />}
                 {activeTab === "settings" && <Settings />}
+                {activeTab === "profile" && <Profile />}
             </main>
         </div>
     );
