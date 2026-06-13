@@ -1,9 +1,7 @@
-/**
- * FILE: src/app/q/[username]/page.tsx
- */
-
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { Mail, Phone, Globe, FileText, AtSign, Link2, Camera } from "lucide-react";
+import SaveContactButton from "./save-contact-button";
 
 export default async function QRProfilePage({
     params,
@@ -12,18 +10,14 @@ export default async function QRProfilePage({
 }) {
     const supabase = await createClient();
 
-    // 1. Fetch profile
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("username", params.username)
         .single();
 
-    if (profileError || !profile) {
-        return notFound();
-    }
+    if (profileError || !profile) return notFound();
 
-    // 2. Fetch ONLY shared files (public access layer)
     const { data: files } = await supabase
         .from("files")
         .select("*")
@@ -32,120 +26,165 @@ export default async function QRProfilePage({
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-    // 3. Fetch ONLY active payment requests (public view)
+    // Only show public (untargeted) pending payment requests
     const { data: payments } = await supabase
         .from("payment_requests")
         .select("*")
         .eq("owner_id", profile.id)
         .eq("status", "pending")
+        .is("payer_id", null)
         .or(`expires_at.is.null,expires_at.gt.now()`)
         .order("created_at", { ascending: false });
 
-    return (
-        <div className="min-h-screen w-full bg-white flex flex-col items-center px-6 py-12">
+    const initials = (profile.display_name || profile.username)
+        .split(" ")
+        .map((w: string) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
 
-            {/* ================= PROFILE CARD ================= */}
-            <div className="w-full max-w-xl bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm">
-                <h1 className="text-2xl font-extrabold text-neutral-900">
+    return (
+        <div className="min-h-screen bg-neutral-100">
+
+            {/* HERO CARD */}
+            <div className="bg-emerald-950 px-6 pt-14 pb-10 rounded-b-[2.5rem]">
+                {/* Avatar */}
+                <div className="w-16 h-16 rounded-2xl bg-emerald-900 flex items-center justify-center mb-4">
+                    <span className="text-white font-black text-xl">{initials}</span>
+                </div>
+
+                <h1 className="text-white text-2xl font-black leading-tight">
                     {profile.display_name || profile.username}
                 </h1>
-
-                <p className="text-sm text-neutral-500 mt-1">
-                    @{profile.username}
-                </p>
+                <p className="text-emerald-400 text-sm mt-1">@{profile.username}</p>
 
                 {profile.bio && (
-                    <p className="mt-4 text-neutral-700 text-sm leading-relaxed">
+                    <p className="text-emerald-200/70 text-sm mt-3 leading-relaxed">
                         {profile.bio}
                     </p>
                 )}
 
-                {/* CONTACT INFO */}
-                <div className="mt-6 grid gap-2 text-sm text-neutral-700">
-                    {profile.email && <p>📧 {profile.email}</p>}
-                    {profile.phone && <p>📱 {profile.phone}</p>}
-                    {profile.website && <p>🌐 {profile.website}</p>}
+                {/* Save contact CTA */}
+                <div className="mt-6">
+                    <SaveContactButton
+                        displayName={profile.display_name || profile.username}
+                        username={profile.username}
+                        email={profile.email}
+                        phone={profile.phone}
+                        website={profile.website}
+                        twitter={profile.twitter}
+                        linkedin={profile.linkedin}
+                        instagram={profile.instagram}
+                        bio={profile.bio}
+                    />
                 </div>
+            </div>
+
+            <div className="px-5 py-6 space-y-4 max-w-lg mx-auto">
+
+                {/* CONTACT DETAILS */}
+                {(profile.email || profile.phone || profile.website) && (
+                    <div className="bg-white rounded-3xl p-5 space-y-3">
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Contact</p>
+                        {profile.email && (
+                            <a href={`mailto:${profile.email}`} className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
+                                <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700"><Mail size={16} /></span>
+                                {profile.email}
+                            </a>
+                        )}
+                        {profile.phone && (
+                            <a href={`tel:${profile.phone}`} className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
+                                <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700"><Phone size={16} /></span>
+                                {profile.phone}
+                            </a>
+                        )}
+                        {profile.website && (
+                            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
+                                <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700"><Globe size={16} /></span>
+                                {profile.website.replace(/^https?:\/\//, "")}
+                            </a>
+                        )}
+                    </div>
+                )}
 
                 {/* SOCIALS */}
-                <div className="mt-4 flex gap-3 text-sm text-emerald-700">
-                    {profile.twitter && <span>@{profile.twitter}</span>}
-                    {profile.linkedin && <span>{profile.linkedin}</span>}
-                    {profile.instagram && <span>@{profile.instagram}</span>}
-                </div>
-            </div>
-
-            {/* ================= FILES ================= */}
-            <div className="w-full max-w-xl mt-10">
-                <h2 className="text-lg font-bold text-neutral-900 mb-4">
-                    Shared Files
-                </h2>
-
-                {files && files.length > 0 ? (
-                    <div className="space-y-3">
-                        {files.map((file) => (
-                            <a
-                                key={file.id}
-                                href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/qr-files/${file.storage_path}`}
-                                target="_blank"
-                                className="block p-4 border rounded-2xl hover:bg-neutral-50 transition"
-                            >
-                                <p className="font-medium text-neutral-900">
-                                    {file.file_name}
-                                </p>
-
-                                <p className="text-xs text-neutral-500">
-                                    {(Number(file.file_size) / 1024 / 1024).toFixed(2)} MB
-                                </p>
+                {(profile.twitter || profile.linkedin || profile.instagram) && (
+                    <div className="bg-white rounded-3xl p-5 space-y-3">
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Socials</p>
+                        {profile.twitter && (
+                            <a href={`https://twitter.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer"
+                               className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
+                                <span className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-sky-500"><AtSign size={16} /></span>
+                                @{profile.twitter}
                             </a>
-                        ))}
+                        )}
+                        {profile.linkedin && (
+                            <a href={`https://linkedin.com/in/${profile.linkedin}`} target="_blank" rel="noopener noreferrer"
+                               className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
+                                <span className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><Link2 size={16} /></span>
+                                {profile.linkedin}
+                            </a>
+                        )}
+                        {profile.instagram && (
+                            <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer"
+                               className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
+                                <span className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center text-pink-500"><Camera size={16} /></span>
+                                @{profile.instagram}
+                            </a>
+                        )}
                     </div>
-                ) : (
-                    <p className="text-sm text-neutral-500">
-                        No shared files available
-                    </p>
                 )}
-            </div>
 
-            {/* ================= PAYMENTS ================= */}
-            <div className="w-full max-w-xl mt-10">
-                <h2 className="text-lg font-bold text-neutral-900 mb-4">
-                    Payment Requests
-                </h2>
-
-                {payments && payments.length > 0 ? (
-                    <div className="space-y-3">
-                        {payments.map((payment) => (
-                            <div
-                                key={payment.id}
-                                className="p-4 border rounded-2xl flex justify-between items-center"
-                            >
-                                <div>
-                                    <p className="font-medium">
-                                        {payment.description || "Payment request"}
-                                    </p>
-
-                                    <p className="text-xs text-neutral-500">
-                                        R {payment.amount}
-                                    </p>
-                                </div>
-
+                {/* PAYMENT REQUESTS */}
+                {payments && payments.length > 0 && profile.accept_payments && (
+                    <div className="bg-white rounded-3xl p-5">
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">Pay</p>
+                        <div className="space-y-3">
+                            {payments.map((payment) => (
                                 <a
+                                    key={payment.id}
                                     href={`/payments/${payment.id}`}
-                                    className="text-sm font-semibold text-emerald-700"
+                                    className="flex items-center justify-between bg-emerald-950 rounded-2xl px-4 py-3"
                                 >
-                                    Pay →
+                                    <div>
+                                        <p className="text-white font-bold text-sm">{payment.description || "Payment request"}</p>
+                                        <p className="text-emerald-400 text-xs mt-0.5">R {payment.amount}</p>
+                                    </div>
+                                    <span className="text-emerald-400 font-black text-lg">→</span>
                                 </a>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                ) : (
-                    <p className="text-sm text-neutral-500">
-                        No payment requests
-                    </p>
                 )}
-            </div>
 
+                {/* FILES */}
+                {files && files.length > 0 && profile.accept_files && (
+                    <div className="bg-white rounded-3xl p-5">
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">Files</p>
+                        <div className="space-y-2">
+                            {files.map((file) => (
+                                <a
+                                    key={file.id}
+                                    href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/qr-files/${file.storage_path}`}
+                                    target="_blank"
+                                    className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-50 hover:bg-neutral-100 transition-colors"
+                                >
+                                    <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0"><FileText size={16} /></span>
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-neutral-900 text-sm truncate">{file.file_name}</p>
+                                        <p className="text-xs text-neutral-400">{(Number(file.file_size) / 1024 / 1024).toFixed(2)} MB</p>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <p className="text-center text-xs text-neutral-400 pt-2 pb-6">
+                    Powered by MY-Q · <a href="/" className="underline">Get your own</a>
+                </p>
+
+            </div>
         </div>
     );
 }

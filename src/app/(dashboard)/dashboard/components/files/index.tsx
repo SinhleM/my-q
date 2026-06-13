@@ -1,212 +1,200 @@
-/**
- * FILE: src/app/(dashboard)/dashboard/components/files/index.tsx
- */
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Upload, FolderOpen, Download, Trash2 } from "lucide-react";
 
 type FileItem = {
     id: string;
     name: string;
+    ext: string;
     size: string;
     uploaded: string;
     path: string;
+    is_shared: boolean;
 };
 
 export default function Files() {
+    const supabase = createClient();
     const [files, setFiles] = useState<FileItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [toast, setToast] = useState("");
 
-    const supabase = createClient();
+    useEffect(() => { loadFiles(); }, []);
 
-    // -------------------------
-    // LOAD FILES
-    // -------------------------
     async function loadFiles() {
         setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-            setLoading(false);
-            return;
-        }
-
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from("files")
             .select("*")
             .eq("owner_id", user.id)
+            .is("deleted_at", null)
             .order("created_at", { ascending: false });
 
-        if (error) {
-            console.error(error);
-            setLoading(false);
-            return;
-        }
-
-        const formatted: FileItem[] =
-            data?.map((file: any) => ({
-                id: file.id,
-                name: file.file_name, // FIXED
-                size: `${(file.file_size / 1024 / 1024).toFixed(2)} MB`, // FIXED
-                uploaded: new Date(file.created_at).toLocaleDateString(),
-                path: file.storage_path, // FIXED
-            })) || [];
-
-        setFiles(formatted);
+        setFiles(
+            (data ?? []).map((f: any) => ({
+                id: f.id,
+                name: f.file_name,
+                ext: f.file_name.split(".").pop()?.toUpperCase() ?? "FILE",
+                size: `${(f.file_size / 1024 / 1024).toFixed(2)} MB`,
+                uploaded: new Date(f.created_at).toLocaleDateString(),
+                path: f.storage_path,
+                is_shared: f.is_shared,
+            }))
+        );
         setLoading(false);
     }
 
-    useEffect(() => {
-        loadFiles();
-    }, []);
-
-    // -------------------------
-    // UPLOAD FILE
-    // -------------------------
     async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
-
         setUploading(true);
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-            setUploading(false);
-            return;
-        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setUploading(false); return; }
 
         const filePath = `${user.id}/${Date.now()}-${file.name}`;
 
-        // 1. Upload to Supabase Storage
         const { error: uploadError } = await supabase.storage
             .from("user-files")
             .upload(filePath, file);
 
         if (uploadError) {
-            console.error(uploadError);
+            showToast("Upload failed");
             setUploading(false);
             return;
         }
 
-        // 2. Insert metadata into DB (FIXED SCHEMA)
-        const { error: dbError } = await supabase.from("files").insert({
+        await supabase.from("files").insert({
             owner_id: user.id,
             sender_id: user.id,
-            storage_path: filePath, // FIXED
-            file_name: file.name, // FIXED
-            file_size: file.size, // FIXED (BIGINT in DB)
+            storage_path: filePath,
+            file_name: file.name,
+            file_size: file.size,
             mime_type: file.type,
             is_shared: false,
         });
 
-        if (dbError) {
-            console.error(dbError);
-            setUploading(false);
-            return;
-        }
-
-        // 3. Refresh list (NO PAGE RELOAD)
         await loadFiles();
-
         setUploading(false);
+        showToast("Uploaded");
     }
 
-    // -------------------------
-    // DOWNLOAD FILE
-    // -------------------------
+    async function toggleShared(fileId: string, current: boolean) {
+        await supabase.from("files").update({ is_shared: !current }).eq("id", fileId);
+        setFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, is_shared: !current } : f));
+    }
+
     async function downloadFile(path: string) {
-        const { data } = await supabase.storage
-            .from("user-files")
-            .createSignedUrl(path, 60);
-
-        if (data?.signedUrl) {
-            window.open(data.signedUrl, "_blank");
-        }
+        const { data } = await supabase.storage.from("user-files").createSignedUrl(path, 60);
+        if (data?.signedUrl) window.open(data.signedUrl, "_blank");
     }
 
-    // -------------------------
-    // UI STATES
-    // -------------------------
+    async function deleteFile(fileId: string, path: string) {
+        await supabase.from("files").update({ deleted_at: new Date().toISOString() }).eq("id", fileId);
+        await supabase.storage.from("user-files").remove([path]);
+        setFiles((prev) => prev.filter((f) => f.id !== fileId));
+        showToast("Deleted");
+    }
+
+    function showToast(msg: string) {
+        setToast(msg);
+        setTimeout(() => setToast(""), 2000);
+    }
+
     if (loading) {
         return (
-            <div className="h-40 animate-pulse bg-neutral-100 rounded-3xl" />
+            <div className="space-y-4">
+                <div className="h-40 bg-neutral-100 animate-pulse rounded-3xl" />
+                <div className="h-48 bg-neutral-100 animate-pulse rounded-3xl" />
+            </div>
         );
     }
 
     return (
-        <div className="animate-in fade-in duration-500">
-            <h1 className="text-2xl md:text-3xl font-black text-emerald-950">
-                Files & Documents
-            </h1>
+        <div className="space-y-4 pb-10">
 
-            <p className="text-neutral-500 mt-2 text-sm md:text-base">
-                Manage your secure documents stored on MyQ.
-            </p>
+            {/* HERO — upload zone */}
+            <div className="bg-emerald-900 rounded-3xl px-6 pt-8 pb-6">
+                <p className="text-emerald-300 text-xs font-bold uppercase tracking-wider mb-1">Files & Documents</p>
+                <p className="text-white font-black text-xl">Your secure storage</p>
+                <p className="text-emerald-200/60 text-sm mt-1">{files.length} file{files.length !== 1 ? "s" : ""} stored</p>
 
-            {/* Upload Section */}
-            <label className="mt-8 block border-2 border-dashed border-neutral-200 rounded-3xl p-10 text-center hover:border-emerald-500 cursor-pointer bg-neutral-50 transition-colors">
-                <p className="font-bold text-neutral-600 hover:text-emerald-900">
-                    {uploading ? "Uploading..." : "Click to upload or drag & drop"}
-                </p>
+                <label className={`mt-5 flex items-center justify-center gap-3 bg-emerald-800 hover:bg-emerald-700 transition-colors rounded-2xl py-4 cursor-pointer ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                    <Upload size={18} className="text-white" />
+                    <span className="text-white font-bold text-sm">
+                        {uploading ? "Uploading..." : "Upload a file"}
+                    </span>
+                    <input type="file" className="hidden" onChange={uploadFile} disabled={uploading} />
+                </label>
+            </div>
 
-                <p className="text-xs text-neutral-400 mt-1">
-                    PDF, PNG, JPG up to 5MB
-                </p>
+            {/* FILE LIST */}
+            <div className="bg-white rounded-3xl px-5 py-5">
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4">Your Files</p>
 
-                <input
-                    type="file"
-                    className="hidden"
-                    onChange={uploadFile}
-                    disabled={uploading}
-                />
-            </label>
-
-            {/* File List */}
-            <div className="mt-8 space-y-3">
                 {files.length === 0 ? (
-                    <p className="text-sm text-neutral-400">
-                        No files uploaded yet.
-                    </p>
+                    <div className="flex flex-col items-center py-8 text-center">
+                        <FolderOpen size={40} className="text-neutral-300 mb-3" />
+                        <p className="text-sm font-bold text-neutral-500">No files yet</p>
+                        <p className="text-xs text-neutral-400 mt-1">Upload a file above to get started</p>
+                    </div>
                 ) : (
-                    files.map((file) => (
-                        <div
-                            key={file.id}
-                            className="flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-900 font-bold text-xs">
-                                    {file.name.split(".").pop()?.toUpperCase()}
+                    <div className="space-y-3">
+                        {files.map((file) => (
+                            <div key={file.id} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-2xl">
+                                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-800 font-black text-xs shrink-0">
+                                    {file.ext.slice(0, 4)}
                                 </div>
 
-                                <div>
-                                    <p className="font-bold text-emerald-950 text-sm">
-                                        {file.name}
-                                    </p>
-                                    <p className="text-[10px] text-neutral-400">
-                                        {file.uploaded} • {file.size}
-                                    </p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-neutral-900 text-sm truncate">{file.name}</p>
+                                    <p className="text-[10px] text-neutral-400 mt-0.5">{file.uploaded} · {file.size}</p>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={() => toggleShared(file.id, file.is_shared)}
+                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer transition-colors ${
+                                            file.is_shared
+                                                ? "bg-emerald-100 text-emerald-700"
+                                                : "bg-neutral-200 text-neutral-500"
+                                        }`}
+                                        title={file.is_shared ? "Visible on your QR page — click to hide" : "Hidden — click to share publicly"}
+                                    >
+                                        {file.is_shared ? "Shared" : "Private"}
+                                    </button>
+                                    <button
+                                        onClick={() => downloadFile(file.path)}
+                                        className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                                        title="Download"
+                                    >
+                                        <Download size={15} />
+                                    </button>
+                                    <button
+                                        onClick={() => deleteFile(file.id, file.path)}
+                                        className="text-neutral-300 hover:text-red-500 cursor-pointer transition-colors"
+                                        title="Delete"
+                                    >
+                                        <Trash2 size={15} />
+                                    </button>
                                 </div>
                             </div>
-
-                            <button
-                                onClick={() => downloadFile(file.path)}
-                                className="text-emerald-700 text-xs font-bold hover:underline"
-                            >
-                                Download
-                            </button>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </div>
+
+            {/* TOAST */}
+            {toast && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-emerald-950 text-white rounded-2xl text-sm font-bold shadow-lg z-50">
+                    {toast}
+                </div>
+            )}
         </div>
     );
 }

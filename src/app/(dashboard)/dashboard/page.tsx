@@ -1,40 +1,70 @@
-// src\app\(dashboard)\dashboard\page.tsx
+// src/app/(dashboard)/dashboard/page.tsx
+
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
-// Import from the folder name (Next.js automatically finds index.tsx)
 import Sidebar from "./components/sidebar";
 import Overview from "./components/overview";
 import Payments from "./components/payments";
+import Contacts from "./components/contacts";
 import Files from "./components/files";
-import Analytics from "./components/analytics";
 import Settings from "./components/settings";
 import Profile from "./components/profile";
+
+import PaymentCheckoutModal from "./components/payments/checkout-modal";
 
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState("overview");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    const searchParams = useSearchParams();
+    const paymentId = searchParams.get("pay");
+
     return (
-        <div className="flex flex-col md:flex-row min-h-screen">
-            {/* Sidebar Controller */}
+        <div className="flex flex-col md:flex-row min-h-screen bg-neutral-50">
             <Sidebar
                 activeTab={activeTab}
-                setActiveTab={setActiveTab}
+                setActiveTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
                 isOpen={isMobileMenuOpen}
                 setIsOpen={setIsMobileMenuOpen}
             />
 
-            {/* Dynamic Content Panel */}
-            <main className="flex-1 px-6 py-10 md:px-12 max-w-4xl">
+            {/* MOBILE HEADER */}
+            <header className="md:hidden flex items-center justify-between px-5 py-4 bg-emerald-900 sticky top-0 z-30">
+                <span className="text-white font-black italic text-2xl tracking-tight">MYQ</span>
+                <button
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="text-white p-1 cursor-pointer"
+                    aria-label="Open menu"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </header>
+
+            <main className="flex-1 px-4 py-6 md:px-12 md:py-10 max-w-2xl md:max-w-4xl">
                 {activeTab === "overview" && <Overview />}
                 {activeTab === "payments" && <Payments />}
+                {activeTab === "contacts" && <Contacts />}
                 {activeTab === "files" && <Files />}
-                {activeTab === "analytics" && <Analytics />}
                 {activeTab === "settings" && <Settings />}
                 {activeTab === "profile" && <Profile />}
             </main>
+
+            {/* PAYMENT MODAL TRIGGER */}
+            {paymentId && (
+                <PaymentCheckoutModal
+                    paymentId={paymentId}
+                    onClose={() => {
+                        window.history.replaceState({}, "", "/dashboard");
+                    }}
+                />
+            )}
         </div>
     );
 }
