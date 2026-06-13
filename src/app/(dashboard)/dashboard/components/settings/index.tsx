@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 function Toggle({
@@ -57,6 +59,7 @@ function SettingRow({
 
 export default function Settings() {
     const supabase = createClient();
+    const router = useRouter();
 
     const [acceptPayments, setAcceptPayments] = useState(true);
     const [acceptFiles, setAcceptFiles] = useState(true);
@@ -121,6 +124,11 @@ export default function Settings() {
 
     async function saveMaxFile() {
         await patch({ max_file_size_mb: maxFileMb });
+    }
+
+    async function logout() {
+        await supabase.auth.signOut();
+        router.push("/");
     }
 
     if (loading) {
@@ -204,6 +212,15 @@ export default function Settings() {
                     {saving ? "Saving..." : "Save Limit"}
                 </button>
             </div>
+
+            {/* LOGOUT */}
+            <button
+                onClick={logout}
+                className="w-full py-4 rounded-2xl font-bold text-sm text-red-500 bg-red-50 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+            >
+                <LogOut size={15} />
+                Log out
+            </button>
 
             {/* TOAST */}
             {toast && (

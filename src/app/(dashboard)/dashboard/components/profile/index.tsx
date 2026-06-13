@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -52,6 +54,7 @@ function Field({
 
 export default function Profile() {
     const supabase = createClient();
+    const router = useRouter();
 
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -85,6 +88,11 @@ export default function Profile() {
 
     function set(key: keyof Profile, value: string) {
         setProfile((p) => p ? { ...p, [key]: value } : p);
+    }
+
+    async function logout() {
+        await supabase.auth.signOut();
+        router.push("/");
     }
 
     async function save() {
@@ -261,10 +269,18 @@ export default function Profile() {
                 className={`w-full py-4 rounded-2xl font-black text-sm transition-all ${
                     saved
                         ? "bg-emerald-500 text-white"
-                        : "bg-emerald-900 text-white hover:bg-emerald-900"
+                        : "bg-emerald-900 text-white hover:bg-emerald-800"
                 } disabled:opacity-50`}
             >
-                {saved ? "Saved ✓" : saving ? "Saving..." : "Save Profile"}
+                {saved ? "Saved" : saving ? "Saving..." : "Save Profile"}
+            </button>
+
+            <button
+                onClick={logout}
+                className="w-full py-4 rounded-2xl font-bold text-sm text-red-500 bg-red-50 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+            >
+                <LogOut size={15} />
+                Log out
             </button>
 
         </div>

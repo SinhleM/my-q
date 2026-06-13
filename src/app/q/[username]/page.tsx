@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Mail, Phone, Globe, FileText, AtSign, Link2, Camera } from "lucide-react";
 import SaveContactButton from "./save-contact-button";
+import FileUploadSection from "./file-upload-section";
 
 export default async function QRProfilePage({
     params,
@@ -178,6 +179,14 @@ export default async function QRProfilePage({
                             ))}
                         </div>
                     </div>
+                )}
+
+                {/* FILE UPLOAD */}
+                {profile.accept_files && (
+                    <FileUploadSection
+                        ownerUsername={profile.username}
+                        maxFileMb={profile.max_file_size_mb ?? 25}
+                    />
                 )}
 
                 <p className="text-center text-xs text-neutral-400 pt-2 pb-6">

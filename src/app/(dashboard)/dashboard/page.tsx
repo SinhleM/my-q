@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import Sidebar from "./components/sidebar";
 import Overview from "./components/overview";
 import Payments from "./components/payments";
-import Contacts from "./components/contacts";
+import Inbox from "./components/inbox";
 import Files from "./components/files";
 import Settings from "./components/settings";
 import Profile from "./components/profile";
@@ -23,7 +23,7 @@ export default function DashboardPage() {
     const paymentId = searchParams.get("pay");
 
     return (
-        <div className="flex flex-col md:flex-row min-h-screen bg-neutral-50">
+        <div className="flex flex-col md:flex-row md:h-screen md:overflow-hidden w-full bg-neutral-50 antialiased text-neutral-900">
             <Sidebar
                 activeTab={activeTab}
                 setActiveTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
@@ -47,10 +47,10 @@ export default function DashboardPage() {
                 </button>
             </header>
 
-            <main className="flex-1 px-4 py-6 md:px-12 md:py-10 max-w-2xl md:max-w-4xl">
+            <main className="flex-1 w-full px-4 py-6 md:px-12 md:py-10 bg-neutral-50 md:overflow-y-auto md:h-screen">
                 {activeTab === "overview" && <Overview />}
                 {activeTab === "payments" && <Payments />}
-                {activeTab === "contacts" && <Contacts />}
+                {activeTab === "inbox" && <Inbox />}
                 {activeTab === "files" && <Files />}
                 {activeTab === "settings" && <Settings />}
                 {activeTab === "profile" && <Profile />}
