@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         owner_id: owner.id,
         file_name: file.name,
         file_size: file.size,
-        file_type: file.type,
+        mime_type: file.type,
         storage_path: storagePath,
         is_shared: false,
         is_received: true,

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 import Sidebar from "./components/sidebar";
@@ -16,16 +16,18 @@ import Profile from "./components/profile";
 
 import PaymentCheckoutModal from "./components/payments/checkout-modal";
 
-function PaymentModalFromUrl() {
+function UrlParamHandler({ setActiveTab }: { setActiveTab: (t: string) => void }) {
     const searchParams = useSearchParams();
+
+    const tab = searchParams.get("tab");
+    useEffect(() => { if (tab) setActiveTab(tab); }, [tab]);
+
     const paymentId = searchParams.get("pay");
     if (!paymentId) return null;
     return (
         <PaymentCheckoutModal
             paymentId={paymentId}
-            onClose={() => {
-                window.history.replaceState({}, "", "/dashboard");
-            }}
+            onClose={() => { window.history.replaceState({}, "", "/dashboard"); }}
         />
     );
 }
@@ -70,7 +72,7 @@ export default function DashboardPage() {
             </main>
 
             <Suspense fallback={null}>
-                <PaymentModalFromUrl />
+                <UrlParamHandler setActiveTab={setActiveTab} />
             </Suspense>
         </div>
     );

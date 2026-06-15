@@ -6,18 +6,17 @@ import { User, FileUp, CreditCard } from "lucide-react";
 import { ICON_PATHS } from "@/lib/avatar";
 
 // Hardcoded scatter layout — avoids Math.random() SSR hydration mismatch
-// Each entry: [top%, left%, rotation-deg, size-px, opacity, mobileOnly?]
-// mobileHide: true = hidden on mobile (sm:block), shown on desktop only
+// Each entry: [top%, left%, rotation-deg, size-px, opacity, mobileHide]
 const SCATTER: [number, number, number, number, number, boolean][] = [
     [8,   5,  -18, 52, 0.18, false],
-    [5,  72,   12, 44, 0.14, false],
-    [18, 88,  -25, 60, 0.16, true],
-    [38,  2,   20, 48, 0.12, false],
-    [55, 80,  -10, 56, 0.15, true],
-    [70, 15,   30, 40, 0.13, true],
-    [80, 60,  -20, 64, 0.17, false],
-    [62, 45,   15, 44, 0.11, true],
-    [25, 50,  -30, 50, 0.14, true],
+    [5,  72,   12, 44, 0.15, false],
+    [18, 88,  -25, 60, 0.17, true],
+    [38,  2,   20, 48, 0.14, false],
+    [55, 80,  -10, 56, 0.16, true],
+    [70, 15,   30, 40, 0.14, true],
+    [80, 60,  -20, 64, 0.18, false],
+    [62, 45,   15, 44, 0.13, true],
+    [25, 50,  -30, 50, 0.15, true],
 ];
 
 export default function Landing() {
@@ -41,8 +40,9 @@ export default function Landing() {
 
     return (
         <div className="w-full flex flex-col items-center">
-            {/* Hero Section */}
-            <section className="w-full px-6 pt-16 pb-20 flex flex-col items-center text-center bg-emerald-900 relative overflow-hidden">
+
+            {/* Hero Section — white background, floating icons as subtle decoration */}
+            <section className="w-full px-6 pt-20 pb-24 flex flex-col items-center text-center bg-white relative overflow-hidden">
 
                 {/* Scattered floating profile icons */}
                 {SCATTER.map(([top, left, rotate, size, opacity, mobileHide], i) => (
@@ -66,25 +66,25 @@ export default function Landing() {
                     </div>
                 ))}
 
-                <h1 className="relative text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-[1.15] max-w-md">
+                <h1 className="relative text-4xl sm:text-6xl font-black tracking-tight text-neutral-900 leading-[1.1] max-w-lg">
                     One QR code.<br />
-                    <span className="text-white">Everything</span> you need.
+                    Everything you need.
                 </h1>
 
-                <p className="relative mt-5 text-base text-white/80 max-w-sm leading-relaxed">
+                <p className="relative mt-5 text-base text-neutral-500 max-w-sm leading-relaxed font-medium">
                     Share files, swap contacts, and accept payments from a single scan.
                 </p>
 
-                <div className="relative mt-8 w-full max-w-xs flex flex-col gap-3">
+                <div className="relative mt-10 w-full max-w-xs flex flex-col gap-3">
                     <Link
                         href="/register"
-                        className="w-full bg-white text-emerald-900 font-bold tracking-tight px-8 py-4 rounded-2xl transition-all duration-200 active:scale-98 text-center hover:bg-emerald-50"
+                        className="w-full bg-emerald-900 text-white font-bold tracking-tight px-8 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] text-center hover:bg-emerald-800"
                     >
                         Create your QR identity
                     </Link>
                     <Link
                         href="/login"
-                        className="w-full text-sm font-bold tracking-tight text-emerald-200/70 hover:text-white transition-colors py-3 text-center"
+                        className="w-full text-sm font-bold tracking-tight text-neutral-400 hover:text-neutral-700 transition-colors py-3 text-center"
                     >
                         Already have one? Log in →
                     </Link>

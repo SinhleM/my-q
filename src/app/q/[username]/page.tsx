@@ -171,9 +171,17 @@ export default async function QRProfilePage({
                     />
                 )}
 
-                <p className="text-center text-xs text-neutral-400 pt-2 pb-6">
-                    Powered by MY-Q · <a href="/" className="underline">Get your own</a>
-                </p>
+                {/* CTA Footer */}
+                <div className="pt-2 pb-8 flex flex-col items-center gap-1 text-center">
+                    <a
+                        href="/register"
+                        className="text-neutral-900 font-black text-base tracking-tight hover:text-emerald-900 transition-colors"
+                    >
+                        Get your own MY-Q profile →
+                    </a>
+                    <p className="text-xs text-neutral-400">Share files, contacts &amp; payments from one link. Free.</p>
+                    <p className="text-[11px] text-neutral-300 mt-1">Powered by MY-Q</p>
+                </div>
 
             </div>
         </div>

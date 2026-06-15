@@ -5,12 +5,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowRight, Check, Mail } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { ICON_PATHS } from "@/lib/avatar";
 
-type Step = "name" | "username" | "email" | "password" | "confirm";
+type Step = "name" | "username" | "email" | "password";
 
 const STEPS: Step[] = ["name", "username", "email", "password"];
+
+function isValidEmail(val: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+}
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -26,10 +30,9 @@ export default function RegisterPage() {
     const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
     const [checkingUsername, setCheckingUsername] = useState(false);
 
-    const stepIndex = STEPS.indexOf(step as Step);
-    const progress = stepIndex < 0 ? 100 : (stepIndex / STEPS.length) * 100;
+    const stepIndex = STEPS.indexOf(step);
+    const progress = ((stepIndex + 1) / STEPS.length) * 100;
 
-    // Show 3 random-ish icons as decoration based on current step
     const decorIcons = [ICON_PATHS[0], ICON_PATHS[3], ICON_PATHS[6]];
 
     function suggestUsername(name: string) {
@@ -50,9 +53,20 @@ export default function RegisterPage() {
 
     function advance() {
         setErrorMsg(null);
-        const order: Step[] = ["name", "username", "email", "password"];
-        const idx = order.indexOf(step as Step);
-        if (idx < order.length - 1) setStep(order[idx + 1]);
+        const idx = STEPS.indexOf(step);
+        if (idx < STEPS.length - 1) setStep(STEPS[idx + 1]);
+    }
+
+    function goBack() {
+        setErrorMsg(null);
+        const idx = STEPS.indexOf(step);
+        if (idx > 0) setStep(STEPS[idx - 1]);
+    }
+
+    function tryAdvanceEmail() {
+        if (!email) { setErrorMsg("Email is required."); return; }
+        if (!isValidEmail(email)) { setErrorMsg("Enter a valid email address."); return; }
+        advance();
     }
 
     async function submit() {
@@ -68,7 +82,6 @@ export default function RegisterPage() {
 
         if (error) { setErrorMsg(error.message); setLoading(false); return; }
 
-        // Update profile with chosen username/name if provided
         if ((username || fullName) && data.user) {
             await supabase
                 .from("profiles")
@@ -79,42 +92,8 @@ export default function RegisterPage() {
                 .eq("id", data.user.id);
         }
 
-        // If session is null, Supabase requires email confirmation
-        if (!data.session) {
-            setStep("confirm");
-            setLoading(false);
-            return;
-        }
-
-        // Confirmed immediately (e.g. email confirmations disabled) — go to dashboard
         router.refresh();
         router.push("/dashboard");
-    }
-
-    // EMAIL CONFIRMATION SCREEN
-    if (step === "confirm") {
-        return (
-            <div className="min-h-screen bg-emerald-900 flex flex-col items-center justify-center px-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-6">
-                    <Mail size={28} className="text-white" />
-                </div>
-                <p className="text-white text-3xl font-black leading-snug max-w-xs">
-                    Check your inbox
-                </p>
-                <p className="text-emerald-200/80 text-sm mt-3 max-w-xs leading-relaxed">
-                    We sent a confirmation link to <span className="text-white font-bold">{email}</span>. Click it to activate your account.
-                </p>
-                <p className="text-emerald-300/60 text-xs mt-5">
-                    Didn&apos;t receive it? Check your spam folder.
-                </p>
-                <Link
-                    href="/"
-                    className="mt-10 bg-white text-emerald-900 font-bold px-8 py-3.5 rounded-2xl hover:bg-emerald-50 transition-colors"
-                >
-                    Back to home
-                </Link>
-            </div>
-        );
     }
 
     return (
@@ -240,6 +219,9 @@ export default function RegisterPage() {
                                     Skip for now
                                 </button>
                             </div>
+                            <button onClick={goBack} className="flex items-center justify-center gap-1 text-sm text-neutral-400 hover:text-neutral-600 transition-colors mx-auto">
+                                <ArrowLeft size={14} /> Back
+                            </button>
                         </div>
                     )}
 
@@ -256,17 +238,23 @@ export default function RegisterPage() {
                                 autoFocus
                                 type="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => { setEmail(e.target.value); setErrorMsg(null); }}
                                 placeholder="name@example.com"
-                                onKeyDown={(e) => e.key === "Enter" && email && advance()}
-                                className="w-full bg-neutral-50 border border-neutral-200 focus:border-emerald-900 text-neutral-900 placeholder-neutral-300 font-medium px-4 py-3.5 rounded-2xl outline-none transition-all text-base text-center"
+                                onKeyDown={(e) => e.key === "Enter" && isValidEmail(email) && tryAdvanceEmail()}
+                                className={`w-full bg-neutral-50 border focus:border-emerald-900 text-neutral-900 placeholder-neutral-300 font-medium px-4 py-3.5 rounded-2xl outline-none transition-all text-base text-center ${
+                                    errorMsg ? "border-red-400" : "border-neutral-200"
+                                }`}
                             />
-                            {errorMsg && <p className="text-xs text-red-500 font-medium">{errorMsg}</p>}
+                            {errorMsg && <p className="text-xs text-red-500 font-medium -mt-4">{errorMsg}</p>}
                             <button
-                                onClick={() => { if (email) advance(); else setErrorMsg("Email is required."); }}
-                                className="w-full bg-emerald-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-800 transition-colors"
+                                onClick={tryAdvanceEmail}
+                                disabled={!isValidEmail(email)}
+                                className="w-full bg-emerald-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 Continue <ArrowRight size={16} />
+                            </button>
+                            <button onClick={goBack} className="flex items-center justify-center gap-1 text-sm text-neutral-400 hover:text-neutral-600 transition-colors mx-auto">
+                                <ArrowLeft size={14} /> Back
                             </button>
                         </div>
                     )}
@@ -296,6 +284,9 @@ export default function RegisterPage() {
                                 className="w-full bg-emerald-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-800 transition-colors disabled:opacity-40"
                             >
                                 {loading ? "Creating identity..." : <>Claim identity <ArrowRight size={16} /></>}
+                            </button>
+                            <button onClick={goBack} className="flex items-center justify-center gap-1 text-sm text-neutral-400 hover:text-neutral-600 transition-colors mx-auto">
+                                <ArrowLeft size={14} /> Back
                             </button>
                         </div>
                     )}

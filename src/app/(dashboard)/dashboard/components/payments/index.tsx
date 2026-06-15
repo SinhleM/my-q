@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import QRCode from "qrcode";
-import { X, QrCode, Copy, Link2, UserCheck, Mail } from "lucide-react";
+import { X, QrCode, Copy, Link2, UserCheck, Mail, AlertCircle } from "lucide-react";
 import PaymentCheckoutModal from "./checkout-modal";
 
 type PaymentRequest = {
@@ -52,6 +52,7 @@ export default function Payments() {
     const [qrModal, setQrModal] = useState<{ id: string; description: string; amount: number } | null>(null);
     const [qrDataUrl, setQrDataUrl] = useState("");
     const [copied, setCopied] = useState<string | null>(null);
+    const [acceptPayments, setAcceptPayments] = useState<boolean | null>(null);
 
     useEffect(() => {
         if (!qrModal) return;
@@ -63,6 +64,14 @@ export default function Payments() {
 
     useEffect(() => {
         loadSent(); loadReceived(); loadContacts();
+        async function checkPaymentsEnabled() {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase.from("profiles").select("accept_payments").eq("id", user.id).single();
+            setAcceptPayments(!!data?.accept_payments);
+        }
+        checkPaymentsEnabled();
     }, []);
 
     async function loadSent() {
@@ -154,6 +163,22 @@ export default function Payments() {
             {/* ── SENT TAB ── */}
             {tab === "sent" && (
                 <>
+                    {/* PAYMENTS NOT ENABLED BANNER */}
+                    {acceptPayments === false && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-3xl px-5 py-4 flex gap-3 items-start">
+                            <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-sm font-bold text-amber-800">Payments aren&apos;t enabled yet</p>
+                                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                                    Go to <strong>Settings → Payments</strong> and toggle <strong>&quot;Accept payments&quot;</strong> on to start creating payment requests.
+                                </p>
+                                <a href="/dashboard?tab=settings" className="inline-block mt-2 text-xs font-bold text-amber-800 underline underline-offset-2">
+                                    Go to Settings →
+                                </a>
+                            </div>
+                        </div>
+                    )}
+
                     {/* CREATE FORM */}
                     <div className="bg-white rounded-3xl px-5 py-5 space-y-4">
                         <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">New Request</p>
@@ -216,8 +241,11 @@ export default function Payments() {
 
                         {createError && <p className="text-sm text-red-500">{createError}</p>}
 
-                        <button onClick={createRequest} disabled={creating || !amount || !description}
-                            className="w-full bg-emerald-900 text-white py-3 rounded-2xl font-bold text-sm disabled:opacity-50 cursor-pointer hover:bg-emerald-800 transition-colors">
+                        <button
+                            onClick={acceptPayments ? createRequest : undefined}
+                            disabled={creating || !amount || !description || !acceptPayments}
+                            className="w-full bg-emerald-900 text-white py-3 rounded-2xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-emerald-800 transition-colors"
+                        >
                             {creating ? "Creating..." : "Create Request"}
                         </button>
                     </div>

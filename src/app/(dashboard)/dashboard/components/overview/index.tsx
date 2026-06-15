@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ExternalLink, Share2 } from "lucide-react";
+import WelcomeModal from "./welcome-modal";
 
 export default function Overview() {
     const [username, setUsername] = useState("");
@@ -10,6 +11,13 @@ export default function Overview() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [copied, setCopied] = useState(false);
+    const [showWelcome, setShowWelcome] = useState(false);
+    const [userId, setUserId] = useState("");
+
+    function dismissWelcome(userId: string) {
+        localStorage.setItem(`myq_welcome_${userId}`, "1");
+        setShowWelcome(false);
+    }
 
     useEffect(() => {
         async function load() {
@@ -20,9 +28,14 @@ export default function Overview() {
 
                 const { data: profile } = await supabase
                     .from("profiles")
-                    .select("username")
+                    .select("username, display_name, bio")
                     .eq("id", user.id)
                     .single();
+
+                // Show welcome card once per user — keyed by user ID so each new account gets it
+                const dismissed = localStorage.getItem(`myq_welcome_${user.id}`);
+                setUserId(user.id);
+                if (!dismissed) setShowWelcome(true);
 
                 if (!profile?.username) { setError("Profile not found"); return; }
 
@@ -93,6 +106,10 @@ export default function Overview() {
     const profileUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/q/${username}`;
 
     return (
+        <>
+        {showWelcome && (
+            <WelcomeModal username={username} onDismiss={() => dismissWelcome(userId)} />
+        )}
         <div className="space-y-4 pb-10">
 
             {/* HERO — QR card */}
@@ -150,5 +167,6 @@ export default function Overview() {
             </div>
 
         </div>
+        </>
     );
 }

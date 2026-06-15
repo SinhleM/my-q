@@ -52,14 +52,6 @@ function LoginForm() {
             return;
         }
 
-        // Block unconfirmed accounts
-        if (!data.user.email_confirmed_at) {
-            await supabase.auth.signOut();
-            setErrorMsg("Please confirm your email before signing in. Check your inbox.");
-            setLoading(false);
-            return;
-        }
-
         router.refresh();
         router.push(next);
     }
