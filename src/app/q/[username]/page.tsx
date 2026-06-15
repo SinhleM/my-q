@@ -7,14 +7,15 @@ import FileUploadSection from "./file-upload-section";
 export default async function QRProfilePage({
     params,
 }: {
-    params: { username: string };
+    params: Promise<{ username: string }>;
 }) {
+    const { username } = await params;
     const supabase = await createClient();
 
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("username", params.username)
+        .eq("username", username)
         .single();
 
     if (profileError || !profile) return notFound();

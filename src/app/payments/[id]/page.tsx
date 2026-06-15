@@ -10,8 +10,9 @@ import PaymentForm from "./payment-form";
 export default async function PaymentPage({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
+    const { id } = await params;
     const supabase = await createClient();
 
     const { data: rawPayment, error } = await supabase
@@ -29,7 +30,7 @@ export default async function PaymentPage({
                 display_name
             )
         `)
-        .eq("id", params.id)
+        .eq("id", id)
         .single();
 
     // Supabase returns joined relations as arrays; flatten the profile here

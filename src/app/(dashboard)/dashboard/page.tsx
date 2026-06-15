@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import Sidebar from "./components/sidebar";
@@ -16,12 +16,23 @@ import Profile from "./components/profile";
 
 import PaymentCheckoutModal from "./components/payments/checkout-modal";
 
+function PaymentModalFromUrl() {
+    const searchParams = useSearchParams();
+    const paymentId = searchParams.get("pay");
+    if (!paymentId) return null;
+    return (
+        <PaymentCheckoutModal
+            paymentId={paymentId}
+            onClose={() => {
+                window.history.replaceState({}, "", "/dashboard");
+            }}
+        />
+    );
+}
+
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState("overview");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    const searchParams = useSearchParams();
-    const paymentId = searchParams.get("pay");
 
     return (
         <div className="flex flex-col md:flex-row md:h-screen md:overflow-hidden w-full bg-neutral-50 antialiased text-neutral-900">
@@ -58,15 +69,9 @@ export default function DashboardPage() {
                 {activeTab === "profile" && <Profile />}
             </main>
 
-            {/* PAYMENT MODAL TRIGGER */}
-            {paymentId && (
-                <PaymentCheckoutModal
-                    paymentId={paymentId}
-                    onClose={() => {
-                        window.history.replaceState({}, "", "/dashboard");
-                    }}
-                />
-            )}
+            <Suspense fallback={null}>
+                <PaymentModalFromUrl />
+            </Suspense>
         </div>
     );
 }

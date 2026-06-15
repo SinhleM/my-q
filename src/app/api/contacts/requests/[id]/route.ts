@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // PATCH /api/contacts/requests/[id] — accept or decline
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
@@ -15,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const { data: req } = await supabase
         .from("contact_requests")
         .select("id, sender_id, receiver_id")
-        .eq("id", params.id)
+        .eq("id", id)
         .eq("receiver_id", user.id)
         .single();
 
@@ -24,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     await supabase
         .from("contact_requests")
         .update({ status: action === "accept" ? "accepted" : "declined" })
-        .eq("id", params.id);
+        .eq("id", id);
 
     if (action === "accept") {
         // Create contact relationship both ways
