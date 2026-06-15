@@ -69,8 +69,6 @@ export default function Settings() {
     const [toast, setToast] = useState("");
     const [username, setUsername] = useState("");
 
-    useEffect(() => { loadSettings(); }, []);
-
     async function loadSettings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -89,6 +87,9 @@ export default function Settings() {
         }
         setLoading(false);
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadSettings(); }, []);
 
     async function patch(updates: Record<string, unknown>) {
         setSaving(true);

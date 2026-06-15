@@ -12,7 +12,7 @@ export default function PaymentCheckoutModal({
 }) {
     const supabase = createClient();
 
-    const [payment, setPayment] = useState<any>(null);
+    const [payment, setPayment] = useState<{ description: string; amount: number } | null>(null);
     const [loading, setLoading] = useState(true);
     const [paying, setPaying] = useState(false);
     const [payerName, setPayerName] = useState("");

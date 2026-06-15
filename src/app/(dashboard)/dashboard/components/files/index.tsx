@@ -21,8 +21,6 @@ export default function Files() {
     const [uploading, setUploading] = useState(false);
     const [toast, setToast] = useState("");
 
-    useEffect(() => { loadFiles(); }, []);
-
     async function loadFiles() {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -30,24 +28,27 @@ export default function Files() {
 
         const { data } = await supabase
             .from("files")
-            .select("*")
+            .select("id, file_name, file_size, storage_path, is_shared, created_at")
             .eq("owner_id", user.id)
             .is("deleted_at", null)
             .order("created_at", { ascending: false });
 
         setFiles(
-            (data ?? []).map((f: any) => ({
-                id: f.id,
-                name: f.file_name,
-                ext: f.file_name.split(".").pop()?.toUpperCase() ?? "FILE",
-                size: `${(f.file_size / 1024 / 1024).toFixed(2)} MB`,
-                uploaded: new Date(f.created_at).toLocaleDateString(),
-                path: f.storage_path,
-                is_shared: f.is_shared,
+            (data ?? []).map((f) => ({
+                id: f.id as string,
+                name: f.file_name as string,
+                ext: (f.file_name as string).split(".").pop()?.toUpperCase() ?? "FILE",
+                size: `${((f.file_size as number) / 1024 / 1024).toFixed(2)} MB`,
+                uploaded: new Date(f.created_at as string).toLocaleDateString(),
+                path: f.storage_path as string,
+                is_shared: f.is_shared as boolean,
             }))
         );
         setLoading(false);
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadFiles(); }, []);
 
     async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];

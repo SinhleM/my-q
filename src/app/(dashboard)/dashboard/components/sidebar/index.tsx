@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     LayoutDashboard,
-    CreditCard,
     Inbox,
+    CreditCard,
     FolderOpen,
-    SlidersHorizontal,
+    UsersRound,
     CircleUser,
+    SlidersHorizontal,
     Home,
     X,
 } from "lucide-react";
@@ -22,11 +23,12 @@ interface SidebarProps {
 
 const items = [
     { id: "overview",  label: "Overview",            Icon: LayoutDashboard },
-    { id: "payments",  label: "Payments & Requests",  Icon: CreditCard },
-    { id: "inbox",     label: "Inbox",                Icon: Inbox },
-    { id: "files",     label: "Files & Documents",    Icon: FolderOpen },
-    { id: "settings",  label: "Settings",             Icon: SlidersHorizontal },
-    { id: "profile",   label: "Profile",              Icon: CircleUser },
+    { id: "inbox",     label: "Inbox",               Icon: Inbox },
+    { id: "payments",  label: "Payments & Requests", Icon: CreditCard },
+    { id: "files",     label: "Files & Documents",   Icon: FolderOpen },
+    { id: "network",   label: "Network",             Icon: UsersRound },
+    { id: "profile",   label: "Profile",             Icon: CircleUser },
+    { id: "settings",  label: "Settings",            Icon: SlidersHorizontal },
 ];
 
 function NavItems({

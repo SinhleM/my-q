@@ -14,7 +14,7 @@ export default async function PaymentPage({
 }) {
     const supabase = await createClient();
 
-    const { data: payment, error } = await supabase
+    const { data: rawPayment, error } = await supabase
         .from("payment_requests")
         .select(`
             id,
@@ -32,7 +32,17 @@ export default async function PaymentPage({
         .eq("id", params.id)
         .single();
 
-    if (error || !payment) {
+    // Supabase returns joined relations as arrays; flatten the profile here
+    const payment = rawPayment
+        ? {
+              ...rawPayment,
+              profile: Array.isArray(rawPayment.profiles)
+                  ? (rawPayment.profiles[0] as { username: string; display_name: string | null } | undefined)
+                  : (rawPayment.profiles as { username: string; display_name: string | null } | null),
+          }
+        : null;
+
+    if (error || !rawPayment || !payment) {
         return notFound();
     }
 
@@ -65,7 +75,7 @@ export default async function PaymentPage({
 
                 {/* ✅ FIXED: no array access */}
                 <p className="text-sm text-neutral-500 mt-1">
-                    Paying @{payment.profiles?.username}
+                    Paying @{payment.profile?.username}
                 </p>
 
                 <div className="mt-6">

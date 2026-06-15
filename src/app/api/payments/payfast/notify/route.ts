@@ -8,7 +8,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 // NOTE: These will be simple MVP stubs for now
 // You can harden them later once system works
 
-function verifySignature(_: any) {
+function verifySignature(_: Record<string, string>) {
     return true; // MVP safe mode
 }
 

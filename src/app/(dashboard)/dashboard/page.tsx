@@ -9,6 +9,7 @@ import Sidebar from "./components/sidebar";
 import Overview from "./components/overview";
 import Payments from "./components/payments";
 import Inbox from "./components/inbox";
+import Network from "./components/network";
 import Files from "./components/files";
 import Settings from "./components/settings";
 import Profile from "./components/profile";
@@ -52,6 +53,7 @@ export default function DashboardPage() {
                 {activeTab === "payments" && <Payments />}
                 {activeTab === "inbox" && <Inbox />}
                 {activeTab === "files" && <Files />}
+                {activeTab === "network" && <Network />}
                 {activeTab === "settings" && <Settings />}
                 {activeTab === "profile" && <Profile />}
             </main>
