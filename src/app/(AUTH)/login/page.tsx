@@ -1,116 +1,182 @@
-// src/app/(auth)/login/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { ArrowRight } from "lucide-react";
+import { ICON_PATHS } from "@/lib/avatar";
 
-export default function LoginPage() {
+const decorIcons = [ICON_PATHS[1], ICON_PATHS[4], ICON_PATHS[7]];
+
+function LoginForm() {
     const router = useRouter();
-    const supabase = createClient();
+    const searchParams = useSearchParams();
+    const next = searchParams.get("next") || "/dashboard";
 
+    const supabase = createClient();
+    const [step, setStep] = useState<"email" | "password">("email");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+    async function handleLogin() {
         setLoading(true);
         setErrorMsg(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
-            setErrorMsg(error.message);
+            setErrorMsg(
+                error.message === "Invalid login credentials"
+                    ? "Wrong email or password. Try again."
+                    : error.message
+            );
             setLoading(false);
-        } else {
-            router.refresh();
-            router.push("/dashboard");
+            return;
         }
-    };
+
+        // Guard: verify profile row exists
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", data.user.id)
+            .maybeSingle();
+
+        if (!profile) {
+            await supabase.auth.signOut();
+            setErrorMsg("No account found for this email. Please register first.");
+            setLoading(false);
+            return;
+        }
+
+        // Block unconfirmed accounts
+        if (!data.user.email_confirmed_at) {
+            await supabase.auth.signOut();
+            setErrorMsg("Please confirm your email before signing in. Check your inbox.");
+            setLoading(false);
+            return;
+        }
+
+        router.refresh();
+        router.push(next);
+    }
 
     return (
-        <div className="min-h-screen bg-white text-neutral-900 px-6 py-12 flex flex-col justify-center items-center antialiased">
-            <div className="w-full max-w-sm flex flex-col gap-8">
+        <div className="min-h-screen bg-white flex flex-col antialiased">
+            {/* Progress bar */}
+            <div className="w-full h-1 bg-neutral-100">
+                <div
+                    className="h-1 bg-emerald-900 transition-all duration-500"
+                    style={{ width: step === "email" ? "50%" : "100%" }}
+                />
+            </div>
 
-                {/* Simplified Header Logo */}
-                <div className="flex flex-col items-center">
-                    <Link href="/">
-                        <Image
-                            src="/myq-logo-removebg.png"
-                            alt="logo"
-                            width={40}
-                            height={40}
-                            className="object-contain"
-                            priority
-                        />
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+                <div className="w-full max-w-sm flex flex-col gap-8">
+
+                    {/* MYQ wordmark */}
+                    <Link href="/" className="text-2xl font-black italic tracking-tighter text-emerald-900 text-center block">
+                        MYQ
                     </Link>
-                    <h1 className="text-2xl font-extrabold tracking-tight mt-4 text-center">
-                        Welcome back
-                    </h1>
-                </div>
 
-                {/* Input Interface Wrapper */}
-                <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                    {errorMsg && (
-                        <div className="bg-red-50 text-red-600 text-xs font-bold p-4 rounded-2xl border border-red-100">
-                            {errorMsg}
+                    {/* Decorative profile icons */}
+                    <div className="flex justify-center gap-3">
+                        {decorIcons.map((src, i) => (
+                            <Image
+                                key={i}
+                                src={src}
+                                alt=""
+                                width={44}
+                                height={44}
+                                className={`rounded-xl ring-2 ring-neutral-100 transition-transform ${i === 1 ? "scale-110" : "opacity-60"}`}
+                            />
+                        ))}
+                    </div>
+
+                    {/* STEP: email */}
+                    {step === "email" && (
+                        <div className="flex flex-col gap-6 text-center">
+                            <div>
+                                <p className="text-2xl font-black text-neutral-900 leading-snug">
+                                    Welcome back
+                                </p>
+                                <p className="text-sm text-neutral-400 mt-1">Enter your email to continue.</p>
+                            </div>
+                            <input
+                                autoFocus
+                                type="email"
+                                value={email}
+                                onChange={(e) => { setEmail(e.target.value); setErrorMsg(null); }}
+                                placeholder="name@example.com"
+                                onKeyDown={(e) => e.key === "Enter" && email && setStep("password")}
+                                className="w-full bg-neutral-50 border border-neutral-200 focus:border-emerald-900 text-neutral-900 placeholder-neutral-300 font-medium px-4 py-3.5 rounded-2xl outline-none transition-all text-base text-center"
+                            />
+                            {errorMsg && <p className="text-xs text-red-500 font-medium">{errorMsg}</p>}
+                            <button
+                                onClick={() => { if (email) setStep("password"); else setErrorMsg("Enter your email first."); }}
+                                className="w-full bg-emerald-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-800 transition-colors"
+                            >
+                                Continue <ArrowRight size={16} />
+                            </button>
                         </div>
                     )}
 
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 pl-1">
-                            Email Address
-                        </label>
-                        <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="name@example.com"
-                            className="w-full bg-neutral-50 border border-neutral-200 focus:border-emerald-950/30 text-neutral-900 placeholder-neutral-400 font-medium px-4 py-3.5 rounded-2xl outline-none transition-all text-sm"
-                        />
-                    </div>
+                    {/* STEP: password */}
+                    {step === "password" && (
+                        <div className="flex flex-col gap-6 text-center">
+                            <div>
+                                <p className="text-2xl font-black text-neutral-900 leading-snug">
+                                    Enter your password
+                                </p>
+                                <p className="text-sm text-neutral-400 mt-1">
+                                    Signing in as <span className="text-neutral-700 font-semibold">{email}</span>{" "}
+                                    <button
+                                        onClick={() => { setStep("email"); setErrorMsg(null); }}
+                                        className="text-emerald-900 font-bold hover:underline text-xs"
+                                    >
+                                        Change
+                                    </button>
+                                </p>
+                            </div>
+                            <input
+                                autoFocus
+                                type="password"
+                                value={password}
+                                onChange={(e) => { setPassword(e.target.value); setErrorMsg(null); }}
+                                placeholder="••••••••"
+                                onKeyDown={(e) => e.key === "Enter" && password && handleLogin()}
+                                className="w-full bg-neutral-50 border border-neutral-200 focus:border-emerald-900 text-neutral-900 placeholder-neutral-300 font-medium px-4 py-3.5 rounded-2xl outline-none transition-all text-base text-center"
+                            />
+                            {errorMsg && <p className="text-xs text-red-500 font-medium">{errorMsg}</p>}
+                            <button
+                                onClick={handleLogin}
+                                disabled={loading || !password}
+                                className="w-full bg-emerald-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-800 transition-colors disabled:opacity-40"
+                            >
+                                {loading ? "Signing in..." : <>Sign in <ArrowRight size={16} /></>}
+                            </button>
+                        </div>
+                    )}
 
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 pl-1">
-                            Password
-                        </label>
-                        <input
-                            type="password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full bg-neutral-50 border border-neutral-200 focus:border-emerald-950/30 text-neutral-900 placeholder-neutral-400 font-medium px-4 py-3.5 rounded-2xl outline-none transition-all text-sm"
-                        />
-                    </div>
-
-                    {/* Large, rounded forest green bubble action block */}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-emerald-950 hover:bg-emerald-900 disabled:bg-neutral-200 text-white font-bold tracking-tight py-4 rounded-2xl transition-all duration-200 active:scale-98 text-center mt-2 shadow-md shadow-emerald-950/5 text-sm"
-                    >
-                        {loading ? "Signing in..." : "Sign in to my-q"}
-                    </button>
-                </form>
-
-                {/* Alternate Auth Gateway Option */}
-                <p className="text-sm font-semibold tracking-tight text-neutral-400 text-center">
-                    New here?{" "}
-                    <Link href="/register" className="text-emerald-950 hover:underline">
-                        Create an identity →
-                    </Link>
-                </p>
-
+                    <p className="text-sm text-center text-neutral-400">
+                        No account yet?{" "}
+                        <Link href="/register" className="text-emerald-900 font-bold hover:underline">
+                            Create one →
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-white" />}>
+            <LoginForm />
+        </Suspense>
     );
 }

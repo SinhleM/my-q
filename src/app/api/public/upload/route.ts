@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 // POST /api/public/upload — anyone can upload a file to a profile (if accept_files is on)
 export async function POST(request: Request) {
-    const supabase = await createClient();
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return NextResponse.json({ error: "Server misconfiguration: service role key missing" }, { status: 500 });
+    }
+
+    // Use service client throughout — profile lookup is fine (profiles are public data)
+    const supabase = createServiceClient();
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
@@ -31,16 +36,19 @@ export async function POST(request: Request) {
     const storagePath = `${owner.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
-    // Use service client so anon visitors can upload (RLS bypassed; we've already validated accept_files)
-    const admin = createServiceClient();
 
-    const { error: uploadError } = await admin.storage
-        .from("qr-files")
+    const { error: uploadError } = await supabase.storage
+        .from("user-files")
         .upload(storagePath, arrayBuffer, { contentType: file.type });
 
-    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    if (uploadError) {
+        const msg = uploadError.message.toLowerCase().includes("bucket")
+            ? "Storage bucket 'user-files' not found. Create it in Supabase Storage."
+            : uploadError.message;
+        return NextResponse.json({ error: msg }, { status: 500 });
+    }
 
-    const { error: dbError } = await admin.from("files").insert({
+    const { error: dbError } = await supabase.from("files").insert({
         owner_id: owner.id,
         file_name: file.name,
         file_size: file.size,

@@ -47,7 +47,7 @@ export default function FileUploadSection({
     return (
         <div className="bg-white rounded-3xl p-5">
             <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">
-                Drop a file
+                Send a file or document
             </p>
 
             {result === "success" ? (

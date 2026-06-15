@@ -236,7 +236,7 @@ export default function Inbox() {
                         {files.map((f) => (
                             <a
                                 key={f.id}
-                                href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/qr-files/${f.storage_path}`}
+                                href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/user-files/${f.storage_path}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-between bg-neutral-50 rounded-2xl px-4 py-3 hover:bg-neutral-100 transition-colors"

@@ -11,7 +11,7 @@ export async function deleteStorageFile(path: string) {
     const supabase = createClient();
 
     const { error } = await supabase.storage
-        .from("qr-files")
+        .from("user-files")
         .remove([path]);
 
     if (error) throw error;
@@ -24,7 +24,7 @@ export async function getSignedDownloadUrl(path: string, expiresIn = 60) {
     const supabase = createClient();
 
     const { data, error } = await supabase.storage
-        .from("qr-files")
+        .from("user-files")
         .createSignedUrl(path, expiresIn);
 
     if (error) throw error;

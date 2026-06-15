@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Mail, Phone, Globe, FileText, AtSign, Link2, Camera } from "lucide-react";
+import Image from "next/image";
+import { Mail, Phone, Globe, FileText } from "lucide-react";
+import { getAvatarPath } from "@/lib/avatar";
 import SaveContactButton from "./save-contact-button";
 import FileUploadSection from "./file-upload-section";
+import SocialsDropdown from "./socials-dropdown";
 
 export default async function QRProfilePage({
     params,
@@ -28,7 +31,6 @@ export default async function QRProfilePage({
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-    // Only show public (untargeted) pending payment requests
     const { data: payments } = await supabase
         .from("payment_requests")
         .select("*")
@@ -38,21 +40,22 @@ export default async function QRProfilePage({
         .or(`expires_at.is.null,expires_at.gt.now()`)
         .order("created_at", { ascending: false });
 
-    const initials = (profile.display_name || profile.username)
-        .split(" ")
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
+    const avatarPath = getAvatarPath(profile.username);
 
     return (
         <div className="min-h-screen bg-neutral-100">
 
             {/* HERO CARD */}
-            <div className="bg-emerald-950 px-6 pt-14 pb-10 rounded-b-[2.5rem]">
+            <div className="bg-emerald-900 px-6 pt-14 pb-10 rounded-b-[2.5rem] flex flex-col items-center text-center">
                 {/* Avatar */}
-                <div className="w-16 h-16 rounded-2xl bg-emerald-900 flex items-center justify-center mb-4">
-                    <span className="text-white font-black text-xl">{initials}</span>
+                <div className="w-24 h-24 rounded-2xl overflow-hidden mb-4 ring-4 ring-white/10">
+                    <Image
+                        src={avatarPath}
+                        alt={profile.display_name || profile.username}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                    />
                 </div>
 
                 <h1 className="text-white text-2xl font-black leading-tight">
@@ -61,13 +64,12 @@ export default async function QRProfilePage({
                 <p className="text-emerald-400 text-sm mt-1">@{profile.username}</p>
 
                 {profile.bio && (
-                    <p className="text-emerald-200/70 text-sm mt-3 leading-relaxed">
+                    <p className="text-emerald-200/70 text-sm mt-3 leading-relaxed max-w-xs">
                         {profile.bio}
                     </p>
                 )}
 
-                {/* Save contact CTA */}
-                <div className="mt-6">
+                <div className="mt-6 w-full max-w-xs">
                     <SaveContactButton
                         displayName={profile.display_name || profile.username}
                         username={profile.username}
@@ -109,33 +111,12 @@ export default async function QRProfilePage({
                     </div>
                 )}
 
-                {/* SOCIALS */}
-                {(profile.twitter || profile.linkedin || profile.instagram) && (
-                    <div className="bg-white rounded-3xl p-5 space-y-3">
-                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Socials</p>
-                        {profile.twitter && (
-                            <a href={`https://twitter.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer"
-                               className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
-                                <span className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-sky-500"><AtSign size={16} /></span>
-                                @{profile.twitter}
-                            </a>
-                        )}
-                        {profile.linkedin && (
-                            <a href={`https://linkedin.com/in/${profile.linkedin}`} target="_blank" rel="noopener noreferrer"
-                               className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
-                                <span className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><Link2 size={16} /></span>
-                                {profile.linkedin}
-                            </a>
-                        )}
-                        {profile.instagram && (
-                            <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer"
-                               className="flex items-center gap-3 text-sm text-neutral-800 font-medium">
-                                <span className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center text-pink-500"><Camera size={16} /></span>
-                                @{profile.instagram}
-                            </a>
-                        )}
-                    </div>
-                )}
+                {/* SOCIALS — collapsible dropdown */}
+                <SocialsDropdown
+                    twitter={profile.twitter}
+                    linkedin={profile.linkedin}
+                    instagram={profile.instagram}
+                />
 
                 {/* PAYMENT REQUESTS */}
                 {payments && payments.length > 0 && profile.accept_payments && (
@@ -146,7 +127,7 @@ export default async function QRProfilePage({
                                 <a
                                     key={payment.id}
                                     href={`/payments/${payment.id}`}
-                                    className="flex items-center justify-between bg-emerald-950 rounded-2xl px-4 py-3"
+                                    className="flex items-center justify-between bg-emerald-900 rounded-2xl px-4 py-3"
                                 >
                                     <div>
                                         <p className="text-white font-bold text-sm">{payment.description || "Payment request"}</p>
@@ -160,14 +141,14 @@ export default async function QRProfilePage({
                 )}
 
                 {/* FILES */}
-                {files && files.length > 0 && profile.accept_files && (
+                {files && files.length > 0 && (
                     <div className="bg-white rounded-3xl p-5">
                         <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">Files</p>
                         <div className="space-y-2">
                             {files.map((file) => (
                                 <a
                                     key={file.id}
-                                    href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/qr-files/${file.storage_path}`}
+                                    href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/user-files/${file.storage_path}`}
                                     target="_blank"
                                     className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-50 hover:bg-neutral-100 transition-colors"
                                 >

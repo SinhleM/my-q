@@ -107,7 +107,7 @@ create table public.scan_events (
 -- ============================================================
 -- FILES
 -- Tracks uploads sent TO a user via their QR page.
--- actual storage: supabase storage bucket "qr-files"
+-- actual storage: supabase storage bucket "user-files"
 -- ============================================================
 create table public.files (
   id            uuid primary key default uuid_generate_v4(),

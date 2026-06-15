@@ -72,6 +72,8 @@ export async function PATCH(request: Request) {
         "accept_files",
         "accept_payments",
         "max_file_size_mb",
+        "avatar_index",
+        "avatar_url",
     ];
 
     const updates: Record<string, unknown> = {};
