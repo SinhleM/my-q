@@ -13,18 +13,19 @@ export async function GET(
     const { fileId } = await context.params;
 
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
     const { data, error } = await supabase
         .from("files")
-        .select("*")
+        .select("storage_path, file_name, file_size, mime_type, owner_id")
         .eq("id", fileId)
+        .eq("owner_id", user.id)
+        .is("deleted_at", null)
         .single();
 
     if (error || !data) {
-        return NextResponse.json(
-            { error: "File not found" },
-            { status: 404 }
-        );
+        return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
     return NextResponse.json({

@@ -9,7 +9,7 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from("files")
-        .select("id, file_name, file_size, file_type, storage_path, created_at")
+        .select("id, file_name, file_size, mime_type, storage_path, created_at")
         .eq("owner_id", user.id)
         .eq("is_received", true)
         .is("deleted_at", null)

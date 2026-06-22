@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCheck, XCircle, Bell, UserCheck, FileDown, FileText } from "lucide-react";
 import PaymentCheckoutModal from "../payments/checkout-modal";
+import { createClient } from "@/lib/supabase/client";
 
 type ContactRequest = {
     id: string;
@@ -48,6 +49,7 @@ export default function Inbox() {
     const [loading, setLoading] = useState(true);
     const [respondingId, setRespondingId] = useState<string | null>(null);
     const [checkoutId, setCheckoutId] = useState<string | null>(null);
+    const supabase = createClient();
 
     useEffect(() => {
         Promise.all([
@@ -61,6 +63,17 @@ export default function Inbox() {
             setLoading(false);
         });
     }, []);
+
+    async function downloadReceivedFile(path: string, fileName: string) {
+        const { data, error } = await supabase.storage
+            .from("user-files")
+            .createSignedUrl(path, 120);
+        if (error || !data?.signedUrl) return;
+        const a = document.createElement("a");
+        a.href = data.signedUrl;
+        a.download = fileName;
+        a.click();
+    }
 
     async function respondToContact(id: string, action: "accept" | "decline") {
         setRespondingId(id);
@@ -234,12 +247,10 @@ export default function Inbox() {
                 ) : (
                     <div className="space-y-2">
                         {files.map((f) => (
-                            <a
+                            <button
                                 key={f.id}
-                                href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/user-files/${f.storage_path}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between bg-neutral-50 rounded-2xl px-4 py-3 hover:bg-neutral-100 transition-colors"
+                                onClick={() => downloadReceivedFile(f.storage_path, f.file_name)}
+                                className="w-full flex items-center justify-between bg-neutral-50 rounded-2xl px-4 py-3 hover:bg-neutral-100 transition-colors text-left"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center text-violet-700 shrink-0">
@@ -253,7 +264,7 @@ export default function Inbox() {
                                     </div>
                                 </div>
                                 <FileDown size={15} className="text-neutral-400 shrink-0 ml-3" />
-                            </a>
+                            </button>
                         ))}
                     </div>
                 )}

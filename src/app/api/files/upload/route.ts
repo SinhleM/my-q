@@ -13,6 +13,10 @@ export async function POST(req: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
+    if (!user) {
+        return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const ownerId = formData.get("ownerId") as string | null;
@@ -22,6 +26,10 @@ export async function POST(req: NextRequest) {
             { error: "Missing file or ownerId" },
             { status: 400 }
         );
+    }
+
+    if (ownerId !== user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const fileExt = file.name.split(".").pop();

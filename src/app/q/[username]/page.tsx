@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Mail, Phone, Globe, FileText } from "lucide-react";
@@ -23,17 +23,35 @@ export default async function QRProfilePage({
 
     if (profileError || !profile) return notFound();
 
-    const { data: files } = await supabase
+    const serviceClient = createServiceClient();
+
+    const { data: rawFiles } = await supabase
         .from("files")
-        .select("*")
+        .select("id, storage_path, file_name, file_size, created_at")
         .eq("owner_id", profile.id)
         .eq("is_shared", true)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-    const { data: payments } = await supabase
+    // Generate signed URLs so file downloads work whether the bucket is public or private
+    const storagePaths = (rawFiles ?? []).map((f) => f.storage_path as string);
+    const { data: signedData } = storagePaths.length
+        ? await serviceClient.storage.from("user-files").createSignedUrls(storagePaths, 3600)
+        : { data: [] };
+
+    const signedUrlMap = new Map(
+        (signedData ?? []).map((s) => [s.path, s.signedUrl])
+    );
+
+    const files = (rawFiles ?? []).map((f) => ({
+        ...f,
+        signedUrl: signedUrlMap.get(f.storage_path as string) ?? null,
+    }));
+
+    // C-4: use service client filtered by owner — avoids the overly broad RLS policy
+    const { data: payments } = await serviceClient
         .from("payment_requests")
-        .select("*")
+        .select("id, description, amount")
         .eq("owner_id", profile.id)
         .eq("status", "pending")
         .is("payer_id", null)
@@ -148,8 +166,9 @@ export default async function QRProfilePage({
                             {files.map((file) => (
                                 <a
                                     key={file.id}
-                                    href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/user-files/${file.storage_path}`}
+                                    href={file.signedUrl ?? "#"}
                                     target="_blank"
+                                    download={file.file_name}
                                     className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-50 hover:bg-neutral-100 transition-colors"
                                 >
                                     <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0"><FileText size={16} /></span>

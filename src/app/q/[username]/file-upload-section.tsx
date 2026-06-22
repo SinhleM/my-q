@@ -18,6 +18,11 @@ export default function FileUploadSection({
     const [fileName, setFileName] = useState("");
 
     async function upload(file: File) {
+        if (file.size > maxFileMb * 1024 * 1024) {
+            setResult("error");
+            setErrorMsg(`File exceeds the ${maxFileMb}MB limit`);
+            return;
+        }
         setUploading(true);
         setResult(null);
         setErrorMsg("");
@@ -78,6 +83,7 @@ export default function FileUploadSection({
                         ref={inputRef}
                         type="file"
                         className="hidden"
+                        accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
                         onChange={(e) => handleFiles(e.target.files)}
                     />
 

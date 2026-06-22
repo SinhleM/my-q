@@ -1,6 +1,30 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 
+const ALLOWED_MIME_TYPES = new Set([
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "image/heic", "image/heif",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain", "text/csv",
+    "application/zip", "application/x-zip-compressed",
+    "video/mp4", "video/quicktime",
+]);
+
+const ALLOWED_EXTENSIONS = new Set([
+    "jpg", "jpeg", "png", "gif", "webp", "heic", "heif",
+    "pdf",
+    "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+    "txt", "csv",
+    "zip",
+    "mp4", "mov",
+]);
+
 // POST /api/public/upload — anyone can upload a file to a profile (if accept_files is on)
 export async function POST(request: Request) {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -32,7 +56,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `File exceeds the ${owner.max_file_size_mb ?? 25}MB limit` }, { status: 413 });
     }
 
-    const ext = file.name.split(".").pop();
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+        return NextResponse.json({ error: "File type not allowed" }, { status: 415 });
+    }
+
+    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+        return NextResponse.json({ error: "File extension not allowed" }, { status: 415 });
+    }
+
     const storagePath = `${owner.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
