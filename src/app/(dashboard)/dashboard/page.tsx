@@ -6,6 +6,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 import Sidebar from "./components/sidebar";
+import MYQShare from "./components/myq";
 import Overview from "./components/overview";
 import Payments from "./components/payments";
 import Inbox from "./components/inbox";
@@ -33,7 +34,7 @@ function UrlParamHandler({ setActiveTab }: { setActiveTab: (t: string) => void }
 }
 
 export default function DashboardPage() {
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState("myq");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     return (
@@ -62,6 +63,7 @@ export default function DashboardPage() {
             </header>
 
             <main className="flex-1 w-full px-4 py-6 md:px-12 md:py-10 bg-neutral-50 md:overflow-y-auto md:h-screen">
+                {activeTab === "myq" && <MYQShare />}
                 {activeTab === "overview" && <Overview />}
                 {activeTab === "payments" && <Payments />}
                 {activeTab === "inbox" && <Inbox />}

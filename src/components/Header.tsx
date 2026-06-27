@@ -45,20 +45,12 @@ export default function Header() {
                             Go to Dashboard
                         </Link>
                     ) : (
-                        <>
-                            <Link
-                                href="/login"
-                                className="text-sm font-semibold tracking-tight text-neutral-500 hover:text-neutral-900 transition-colors"
-                            >
-                                Log in
-                            </Link>
-                            <Link
-                                href="/register"
-                                className="text-sm font-bold tracking-tight bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-full transition-all duration-200 active:scale-95 shadow-sm"
-                            >
-                                Get started
-                            </Link>
-                        </>
+                        <Link
+                            href="/dashboard"
+                            className="text-sm font-bold tracking-tight bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-full transition-all duration-200 active:scale-95 shadow-sm"
+                        >
+                            Open Dashboard
+                        </Link>
                     )}
                 </div>
             </div>

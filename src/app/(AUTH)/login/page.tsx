@@ -29,11 +29,13 @@ function LoginForm() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
-            setErrorMsg(
+            const msg =
                 error.message === "Invalid login credentials"
                     ? "Wrong email or password. Try again."
-                    : error.message
-            );
+                    : error.message.toLowerCase().includes("email not confirmed")
+                    ? "Please confirm your email before signing in. Check your inbox."
+                    : error.message;
+            setErrorMsg(msg);
             setLoading(false);
             return;
         }

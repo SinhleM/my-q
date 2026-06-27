@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Upload, FolderOpen, Download, Trash2 } from "lucide-react";
+import { Upload, FolderOpen, Download, Trash2, Share2 } from "lucide-react";
+import ShareModal from "@/components/myq/ShareModal";
 
 type FileItem = {
     id: string;
@@ -14,12 +15,20 @@ type FileItem = {
     is_shared: boolean;
 };
 
+type ShareState = {
+    fileName: string;
+    payloadUrl: string;
+    qrDataUrl: string;
+};
+
 export default function Files() {
     const supabase = createClient();
     const [files, setFiles] = useState<FileItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [toast, setToast] = useState("");
+    const [shareModal, setShareModal] = useState<ShareState | null>(null);
+    const [sharingId, setSharingId] = useState<string | null>(null);
 
     async function loadFiles() {
         setLoading(true);
@@ -102,6 +111,45 @@ export default function Files() {
         showToast("Deleted");
     }
 
+    async function handleShare(file: FileItem) {
+        if (!file.is_shared) {
+            // Auto-enable sharing then generate QR
+            await supabase.from("files").update({ is_shared: true }).eq("id", file.id);
+            setFiles((prev) => prev.map((f) => f.id === file.id ? { ...f, is_shared: true } : f));
+        }
+
+        setSharingId(file.id);
+
+        try {
+            const res = await fetch("/api/qr/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "file",
+                    id: file.id,
+                    destination: "whatsapp",
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.qr) {
+                showToast("QR generation failed");
+                return;
+            }
+
+            setShareModal({
+                fileName: file.name,
+                payloadUrl: data.url,
+                qrDataUrl: data.qr,
+            });
+        } catch {
+            showToast("Something went wrong");
+        } finally {
+            setSharingId(null);
+        }
+    }
+
     function showToast(msg: string) {
         setToast(msg);
         setTimeout(() => setToast(""), 2000);
@@ -117,85 +165,104 @@ export default function Files() {
     }
 
     return (
-        <div className="space-y-4 pb-10">
+        <>
+            {shareModal && (
+                <ShareModal
+                    fileName={shareModal.fileName}
+                    payloadUrl={shareModal.payloadUrl}
+                    qrDataUrl={shareModal.qrDataUrl}
+                    onClose={() => setShareModal(null)}
+                />
+            )}
 
-            {/* HERO — upload zone */}
-            <div className="bg-emerald-900 rounded-3xl px-6 pt-8 pb-6">
-                <p className="text-emerald-300 text-xs font-bold uppercase tracking-wider mb-1">Files & Documents</p>
-                <p className="text-white font-black text-xl">Your secure storage</p>
-                <p className="text-emerald-200/60 text-sm mt-1">{files.length} file{files.length !== 1 ? "s" : ""} stored</p>
+            <div className="space-y-4 pb-10">
 
-                <label className={`mt-5 flex items-center justify-center gap-3 bg-emerald-800 hover:bg-emerald-700 transition-colors rounded-2xl py-4 cursor-pointer ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                    <Upload size={18} className="text-white" />
-                    <span className="text-white font-bold text-sm">
-                        {uploading ? "Uploading..." : "Upload a file"}
-                    </span>
-                    <input type="file" className="hidden" onChange={uploadFile} disabled={uploading} />
-                </label>
-            </div>
+                {/* HERO — upload zone */}
+                <div className="bg-emerald-900 rounded-3xl px-6 pt-8 pb-6">
+                    <p className="text-emerald-300 text-xs font-bold uppercase tracking-wider mb-1">Files & Documents</p>
+                    <p className="text-white font-black text-xl">Your secure storage</p>
+                    <p className="text-emerald-200/60 text-sm mt-1">{files.length} file{files.length !== 1 ? "s" : ""} stored</p>
 
-            {/* FILE LIST */}
-            <div className="bg-white rounded-3xl px-5 py-5">
-                <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4">Your Files</p>
+                    <label className={`mt-5 flex items-center justify-center gap-3 bg-emerald-800 hover:bg-emerald-700 transition-colors rounded-2xl py-4 cursor-pointer ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                        <Upload size={18} className="text-white" />
+                        <span className="text-white font-bold text-sm">
+                            {uploading ? "Uploading..." : "Upload a file"}
+                        </span>
+                        <input type="file" className="hidden" onChange={uploadFile} disabled={uploading} />
+                    </label>
+                </div>
 
-                {files.length === 0 ? (
-                    <div className="flex flex-col items-center py-8 text-center">
-                        <FolderOpen size={40} className="text-neutral-300 mb-3" />
-                        <p className="text-sm font-bold text-neutral-500">No files yet</p>
-                        <p className="text-xs text-neutral-400 mt-1">Upload a file above to get started</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {files.map((file) => (
-                            <div key={file.id} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-2xl">
-                                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-800 font-black text-xs shrink-0">
-                                    {file.ext.slice(0, 4)}
+                {/* FILE LIST */}
+                <div className="bg-white rounded-3xl px-5 py-5">
+                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4">Your Files</p>
+
+                    {files.length === 0 ? (
+                        <div className="flex flex-col items-center py-8 text-center">
+                            <FolderOpen size={40} className="text-neutral-300 mb-3" />
+                            <p className="text-sm font-bold text-neutral-500">No files yet</p>
+                            <p className="text-xs text-neutral-400 mt-1">Upload a file above to get started</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {files.map((file) => (
+                                <div key={file.id} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-2xl">
+                                    <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-800 font-black text-xs shrink-0">
+                                        {file.ext.slice(0, 4)}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-neutral-900 text-sm truncate">{file.name}</p>
+                                        <p className="text-[10px] text-neutral-400 mt-0.5">{file.uploaded} · {file.size}</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            onClick={() => toggleShared(file.id, file.is_shared)}
+                                            className={`text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer transition-colors ${
+                                                file.is_shared
+                                                    ? "bg-emerald-100 text-emerald-700"
+                                                    : "bg-neutral-200 text-neutral-500"
+                                            }`}
+                                            title={file.is_shared ? "Visible on your QR page — click to hide" : "Hidden — click to share publicly"}
+                                        >
+                                            {file.is_shared ? "Shared" : "Private"}
+                                        </button>
+                                        <button
+                                            onClick={() => handleShare(file)}
+                                            disabled={sharingId === file.id}
+                                            className={`text-emerald-700 hover:text-emerald-900 cursor-pointer transition-colors ${sharingId === file.id ? "opacity-40" : ""}`}
+                                            title="Share via WhatsApp QR"
+                                        >
+                                            <Share2 size={15} />
+                                        </button>
+                                        <button
+                                            onClick={() => downloadFile(file.path)}
+                                            className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                                            title="Download"
+                                        >
+                                            <Download size={15} />
+                                        </button>
+                                        <button
+                                            onClick={() => deleteFile(file.id, file.path)}
+                                            className="text-neutral-300 hover:text-red-500 cursor-pointer transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-neutral-900 text-sm truncate">{file.name}</p>
-                                    <p className="text-[10px] text-neutral-400 mt-0.5">{file.uploaded} · {file.size}</p>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                        onClick={() => toggleShared(file.id, file.is_shared)}
-                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer transition-colors ${
-                                            file.is_shared
-                                                ? "bg-emerald-100 text-emerald-700"
-                                                : "bg-neutral-200 text-neutral-500"
-                                        }`}
-                                        title={file.is_shared ? "Visible on your QR page — click to hide" : "Hidden — click to share publicly"}
-                                    >
-                                        {file.is_shared ? "Shared" : "Private"}
-                                    </button>
-                                    <button
-                                        onClick={() => downloadFile(file.path)}
-                                        className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
-                                        title="Download"
-                                    >
-                                        <Download size={15} />
-                                    </button>
-                                    <button
-                                        onClick={() => deleteFile(file.id, file.path)}
-                                        className="text-neutral-300 hover:text-red-500 cursor-pointer transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                {/* TOAST */}
+                {toast && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-emerald-950 text-white rounded-2xl text-sm font-bold shadow-lg z-50">
+                        {toast}
                     </div>
                 )}
             </div>
-
-            {/* TOAST */}
-            {toast && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-emerald-950 text-white rounded-2xl text-sm font-bold shadow-lg z-50">
-                    {toast}
-                </div>
-            )}
-        </div>
+        </>
     );
 }

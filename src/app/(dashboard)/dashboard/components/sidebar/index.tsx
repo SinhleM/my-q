@@ -12,6 +12,7 @@ import {
     SlidersHorizontal,
     Home,
     X,
+    QrCode,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -22,13 +23,14 @@ interface SidebarProps {
 }
 
 const items = [
-    { id: "overview",  label: "Overview",            Icon: LayoutDashboard },
-    { id: "inbox",     label: "Inbox",               Icon: Inbox },
-    { id: "payments",  label: "Payments & Requests", Icon: CreditCard },
-    { id: "files",     label: "Files & Documents",   Icon: FolderOpen },
-    { id: "network",   label: "Network",             Icon: UsersRound },
-    { id: "profile",   label: "Profile",             Icon: CircleUser },
-    { id: "settings",  label: "Settings",            Icon: SlidersHorizontal },
+    { id: "myq",       label: "MYQ Share",           Icon: QrCode,           highlight: true },
+    { id: "overview",  label: "Overview",             Icon: LayoutDashboard,  highlight: false },
+    { id: "inbox",     label: "Inbox",                Icon: Inbox,            highlight: false },
+    { id: "payments",  label: "Payments & Requests",  Icon: CreditCard,       highlight: false },
+    { id: "files",     label: "Files & Documents",    Icon: FolderOpen,       highlight: false },
+    { id: "network",   label: "Network",              Icon: UsersRound,       highlight: false },
+    { id: "profile",   label: "Profile",              Icon: CircleUser,       highlight: false },
+    { id: "settings",  label: "Settings",             Icon: SlidersHorizontal, highlight: false },
 ];
 
 function NavItems({
@@ -42,9 +44,10 @@ function NavItems({
 }) {
     return (
         <nav className="flex flex-col gap-0.5 w-full">
-            {items.map(({ id, label, Icon }) => {
+            {items.map(({ id, label, Icon, highlight }) => {
                 const isActive = activeTab === id;
                 const badge = id === "inbox" && inboxCount > 0 ? inboxCount : 0;
+                const isMYQ = id === "myq";
 
                 return (
                     <button
@@ -61,7 +64,9 @@ function NavItems({
                             ${isActive ? "rounded-r-none" : "rounded-r-xl"}
                             ${isActive
                                 ? "bg-emerald-800 text-white"
-                                : "text-emerald-200/60 hover:text-white hover:bg-emerald-800/50"
+                                : isMYQ
+                                    ? "text-emerald-300 hover:text-white hover:bg-emerald-800/50"
+                                    : "text-emerald-200/60 hover:text-white hover:bg-emerald-800/50"
                             }
                         `}
                     >
@@ -69,6 +74,11 @@ function NavItems({
                             <Icon size={16} strokeWidth={2.5} />
                         </span>
                         <span className="flex-1 text-left">{label}</span>
+                        {isMYQ && !isActive && (
+                            <span className="mr-3 bg-emerald-400 text-emerald-950 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                                New
+                            </span>
+                        )}
                         {badge > 0 && (
                             <span className="mr-3 min-w-[20px] h-5 flex items-center justify-center bg-white text-emerald-900 text-[10px] font-black rounded-full px-1.5">
                                 {badge > 99 ? "99+" : badge}

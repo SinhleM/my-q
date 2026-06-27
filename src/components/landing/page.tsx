@@ -77,16 +77,10 @@ export default function Landing() {
 
                 <div className="relative mt-10 w-full max-w-xs flex flex-col gap-3">
                     <Link
-                        href="/register"
+                        href="/dashboard"
                         className="w-full bg-emerald-900 text-white font-bold tracking-tight px-8 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] text-center hover:bg-emerald-800"
                     >
-                        Create your QR identity
-                    </Link>
-                    <Link
-                        href="/login"
-                        className="w-full text-sm font-bold tracking-tight text-neutral-400 hover:text-neutral-700 transition-colors py-3 text-center"
-                    >
-                        Already have one? Log in →
+                        Open Dashboard →
                     </Link>
                 </div>
             </section>

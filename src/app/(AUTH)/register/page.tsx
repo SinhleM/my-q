@@ -5,10 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Mail } from "lucide-react";
 import { ICON_PATHS } from "@/lib/avatar";
 
-type Step = "name" | "username" | "email" | "password";
+type Step = "name" | "username" | "email" | "password" | "confirm";
 
 const STEPS: Step[] = ["name", "username", "email", "password"];
 
@@ -30,8 +30,8 @@ export default function RegisterPage() {
     const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
     const [checkingUsername, setCheckingUsername] = useState(false);
 
-    const stepIndex = STEPS.indexOf(step);
-    const progress = ((stepIndex + 1) / STEPS.length) * 100;
+    const stepIndex = STEPS.indexOf(step as (typeof STEPS)[number]);
+    const progress = step === "confirm" ? 100 : ((stepIndex + 1) / STEPS.length) * 100;
 
     const decorIcons = [ICON_PATHS[0], ICON_PATHS[3], ICON_PATHS[6]];
 
@@ -82,6 +82,15 @@ export default function RegisterPage() {
 
         if (error) { setErrorMsg(error.message); setLoading(false); return; }
 
+        // No session means Supabase requires email confirmation before login.
+        if (!data.session) {
+            setErrorMsg(null);
+            setStep("confirm" as Step);
+            setLoading(false);
+            return;
+        }
+
+        // Session exists — user is immediately logged in (email confirmation disabled).
         if ((username || fullName) && data.user) {
             await supabase
                 .from("profiles")
@@ -291,12 +300,41 @@ export default function RegisterPage() {
                         </div>
                     )}
 
+                    {/* STEP: confirm (email confirmation required) */}
+                    {step === "confirm" && (
+                        <div className="flex flex-col gap-6 text-center">
+                            <div className="flex justify-center">
+                                <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                                    <Mail size={28} className="text-emerald-900" />
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-neutral-900 leading-snug">
+                                    Check your email
+                                </p>
+                                <p className="text-sm text-neutral-400 mt-2">
+                                    We sent a confirmation link to{" "}
+                                    <span className="text-neutral-700 font-semibold">{email}</span>.
+                                    Click it to activate your account.
+                                </p>
+                            </div>
+                            <Link
+                                href="/login"
+                                className="w-full bg-emerald-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-800 transition-colors"
+                            >
+                                Go to login <ArrowRight size={16} />
+                            </Link>
+                        </div>
+                    )}
+
+                    {step !== "confirm" && (
                     <p className="text-sm text-center text-neutral-400">
                         Already have an account?{" "}
                         <Link href="/login" className="text-emerald-900 font-bold hover:underline">
                             Log in →
                         </Link>
                     </p>
+                    )}
                 </div>
             </div>
         </div>
