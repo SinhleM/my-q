@@ -40,12 +40,15 @@ export default async function QRProfilePage({
         : { data: [] };
 
     const signedUrlMap = new Map(
-        (signedData ?? []).map((s) => [s.path, s.signedUrl])
+        (signedData ?? []).map((s: { path: string; signedUrl: string | Record<string, never> }) => [
+            s.path,
+            typeof s.signedUrl === "string" ? s.signedUrl : null,
+        ])
     );
 
     const files = (rawFiles ?? []).map((f) => ({
         ...f,
-        signedUrl: signedUrlMap.get(f.storage_path as string) ?? null,
+        signedUrl: (signedUrlMap.get(f.storage_path as string) ?? null) as string | null,
     }));
 
     // C-4: use service client filtered by owner — avoids the overly broad RLS policy
@@ -141,7 +144,7 @@ export default async function QRProfilePage({
                     <div className="bg-white rounded-3xl p-5">
                         <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">Pay</p>
                         <div className="space-y-3">
-                            {payments.map((payment) => (
+                            {payments.map((payment: { id: string; description: string | null; amount: number }) => (
                                 <a
                                     key={payment.id}
                                     href={`/payments/${payment.id}`}
